@@ -1,0 +1,33 @@
+{
+  "app_name": "OR Assistant",
+  "version": "0.1.0",
+  "default_solver": "pulp",
+  "default_model": "claude-sonnet-4-5-20250929",
+  "api_settings": {
+    "max_tokens": 4096,
+    "temperature": 0.3,
+    "timeout": 60
+  },
+  "solver_settings": {
+    "default_time_limit": 300,
+    "enable_logging": true,
+    "precision": 1e-6
+  },
+  "ui_settings": {
+    "theme": "light",
+    "max_file_size_mb": 10,
+    "enable_examples": true
+  },
+  "problem_types": [
+    "linear_programming",
+    "integer_programming",
+    "mixed_integer_programming",
+    "transportation",
+    "assignment",
+    "scheduling",
+    "knapsack",
+    "network_flow",
+    "routing",
+    "cutting_stock"
+  ]
+}
