@@ -128,6 +128,6 @@ streamlit cache clear
 
 - 📖 [Documentation](docs/)
 - 💬 [Open an Issue](https://github.com/yourusername/or-assistant/issues)
-- 📧 Contact: your-email@example.com
+- 📧 Contact: harun.pirim@ndsu.edu
 
 Happy optimizing! 🎯
