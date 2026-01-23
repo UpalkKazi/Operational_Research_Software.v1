@@ -24,7 +24,7 @@ setup(
     description='AI-powered Operations Research tool for solving optimization problems',
     long_description=read_file('README.md'),
     long_description_content_type='text/markdown',
-    url='https://github.com/yourusername/or-assistant',
+    url='https://github.com/harunpirim/or-assistant',
     packages=find_packages(exclude=['tests', 'docs', 'examples']),
     classifiers=[
         'Development Status :: 3 - Alpha',

@@ -29,7 +29,7 @@ or-assistant/
 │   │
 │   ├── 📁 agents/                 # AI classification & understanding
 │   │   ├── __init__.py
-│   │   └── problem_classifier.py  # Claude-powered problem classifier
+│   │   └── problem_classifier.py  # AI-powered problem classifier
 │   │
 │   ├── 📁 modeling/               # Mathematical model generation
 │   │   ├── __init__.py
@@ -41,7 +41,7 @@ or-assistant/
 │   │
 │   ├── 📁 interpreters/           # Results explanation
 │   │   ├── __init__.py
-│   │   └── result_interpreter.py  # Claude-powered interpretation
+│   │   └── result_interpreter.py  # AI-powered interpretation
 │   │
 │   ├── 📁 simulation/             # Simulation (future)
 │   │   └── __init__.py
@@ -80,7 +80,7 @@ or-assistant/
 **Purpose**: Understand and classify optimization problems
 
 **Key File**: `problem_classifier.py`
-- Uses Claude AI to understand natural language
+- Uses AI (Claude or OpenAI) to understand natural language
 - Identifies problem type (LP, IP, Transportation, etc.)
 - Extracts parameters and constraints
 - Returns structured problem data
@@ -93,7 +93,7 @@ or-assistant/
 **Key File**: `model_generator.py`
 - Creates PuLP LpProblem objects
 - Supports multiple problem types
-- Can use Claude to generate complex models
+- Can use AI to generate complex models
 - Validates model structure
 
 **Status**: ✅ Core types implemented, extensible
@@ -113,7 +113,7 @@ or-assistant/
 **Purpose**: Explain solutions in plain language
 
 **Key File**: `result_interpreter.py`
-- Uses Claude AI for explanations
+- Uses AI for explanations
 - Generates business-friendly insights
 - Creates formatted reports
 - Handles non-optimal solutions
@@ -164,7 +164,7 @@ or-assistant/
 
 ### ✅ Completed
 - Project structure
-- Core AI integration (Claude API)
+- Core AI integration (Anthropic Claude or OpenAI)
 - Problem classification
 - Model generation (LP, IP, Transportation, Assignment)
 - Solver interface (PuLP)
@@ -194,6 +194,7 @@ or-assistant/
 ### Core Stack
 - **Python 3.10+** - Programming language
 - **Anthropic Claude** - AI/LLM for understanding & explanation
+- **OpenAI** - Alternative AI provider (GPT-4o, GPT-4 Turbo, etc.)
 - **PuLP** - Linear programming
 - **Streamlit** - Web interface
 - **pytest** - Testing
@@ -260,7 +261,7 @@ pytest --cov=src tests/     # With coverage
 - [ ] Clone repository
 - [ ] Set up virtual environment
 - [ ] Install dependencies
-- [ ] Get Anthropic API key
+- [ ] Get AI API key (Anthropic or OpenAI)
 - [ ] Configure .env file
 - [ ] Run tests
 - [ ] Start Streamlit app
@@ -285,7 +286,7 @@ pytest --cov=src tests/     # With coverage
 1. **Start small** - Get one problem type working first
 2. **Test often** - Every function, every feature
 3. **Use examples** - Copy patterns from existing code
-4. **Ask Claude** - Use AI to help debug
+4. **Ask AI** - Use AI (Claude or OpenAI) to help debug
 5. **Stay organized** - Track your progress
 
 ### Common Pitfalls
@@ -308,12 +309,13 @@ pytest --cov=src tests/     # With coverage
 - In-repo docs (you have them all!)
 - PuLP: https://coin-or.github.io/pulp/
 - Anthropic: https://docs.anthropic.com
+- OpenAI: https://platform.openai.com/docs
 - Streamlit: https://docs.streamlit.io
 
 ### Getting Help
 - Open GitHub issue
 - Check example files
-- Use Claude for debugging
+- Use AI (Claude or OpenAI) for debugging
 - Search Stack Overflow
 
 ## 🎓 Learning Outcomes

@@ -1,6 +1,6 @@
 # OR Assistant - AI-Powered Operations Research Tool
 
-An intelligent assistant that helps solve Operations Research problems using natural language. Built with Claude AI and open-source OR solvers.
+An intelligent assistant that helps solve Operations Research problems using natural language. Built with AI (Anthropic Claude or OpenAI) and open-source OR solvers.
 
 ## 🎯 Project Overview
 
@@ -22,7 +22,9 @@ OR Assistant bridges the gap between business problems and mathematical optimiza
 ## 📋 Prerequisites
 
 - Python 3.10 or higher
-- Anthropic API key (get from https://console.anthropic.com)
+- AI API key (choose one):
+  - Anthropic API key (get from https://console.anthropic.com)
+  - OpenAI API key (get from https://platform.openai.com/api-keys)
 - Optional: Gurobi academic license for advanced solving
 
 ## 🛠️ Installation
@@ -47,7 +49,10 @@ pip install -r requirements.txt
 ### 4. Set up environment variables
 ```bash
 cp .env.example .env
-# Edit .env and add your ANTHROPIC_API_KEY
+# Edit .env and add your API key:
+# - ANTHROPIC_API_KEY (for Claude) OR
+# - OPENAI_API_KEY (for OpenAI)
+# Optionally set AI_PROVIDER to 'anthropic' or 'openai' to force a provider
 ```
 
 ## 🏃 Quick Start
@@ -143,6 +148,7 @@ This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
 ## 🙏 Acknowledgments
 
 - Anthropic Claude AI
+- OpenAI
 - Google OR-Tools
 - COIN-OR PuLP
 - CVXPY Team

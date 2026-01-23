@@ -31,7 +31,10 @@ pip install -r requirements.txt
 
 ## Step 4: Configure API Key
 
-1. Get your Anthropic API key from: https://console.anthropic.com
+1. Get your API key from one of these providers:
+   - **Anthropic Claude**: https://console.anthropic.com
+   - **OpenAI**: https://platform.openai.com/api-keys
+
 2. Create `.env` file:
 
 ```bash
@@ -40,9 +43,17 @@ cp .env.example .env
 
 3. Edit `.env` and add your key:
 
+**Option A - Using Anthropic:**
 ```
-ANTHROPIC_API_KEY=your_key_here
+ANTHROPIC_API_KEY=your_anthropic_key_here
 ```
+
+**Option B - Using OpenAI:**
+```
+OPENAI_API_KEY=your_openai_key_here
+```
+
+**Optional:** Set `AI_PROVIDER=anthropic` or `AI_PROVIDER=openai` to force a specific provider. If both keys are present, Anthropic is used by default.
 
 ## Step 5: Run the App
 
@@ -103,10 +114,11 @@ source venv/bin/activate  # or venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### "ANTHROPIC_API_KEY not found"
+### "API key not found"
 1. Check `.env` file exists
-2. Verify the API key is correct
+2. Verify you have either `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` set
 3. Make sure `.env` is in the project root directory
+4. Check that the API key is correct and has proper permissions
 
 ### "Solver not available"
 Default PuLP solver (CBC) should work. For others:

@@ -1,27 +1,36 @@
 """
-Result Interpreter - Uses Claude AI to explain solutions in plain language
+Result Interpreter - Uses AI to explain solutions in plain language
+Supports both Anthropic Claude and OpenAI models.
 """
 
 import os
 from typing import Dict, Any, Optional
 import json
-from anthropic import Anthropic
+from src.utils.api_client import APIClient
 
 
 class ResultInterpreter:
     """
     Interprets optimization results and generates human-readable explanations
-    using Claude AI.
+    using AI (Anthropic Claude or OpenAI).
     """
     
-    def __init__(self, api_key: Optional[str] = None):
-        """Initialize the interpreter with Anthropic API."""
-        self.api_key = api_key or os.getenv('ANTHROPIC_API_KEY')
-        if not self.api_key:
-            raise ValueError("ANTHROPIC_API_KEY not found in environment")
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None
+    ):
+        """
+        Initialize the interpreter with AI API.
         
-        self.client = Anthropic(api_key=self.api_key)
-        self.model = os.getenv('DEFAULT_MODEL', 'claude-sonnet-4-5-20250929')
+        Args:
+            api_key: API key (optional, reads from environment if not provided)
+            provider: 'anthropic' or 'openai' (optional, auto-detects if not provided)
+            model: Model name (optional, uses default if not provided)
+        """
+        self.api_client = APIClient(provider=provider, api_key=api_key, model=model)
+        self.model = self.api_client.get_model_name()
     
     def interpret(
         self, 
@@ -48,17 +57,16 @@ class ResultInterpreter:
         prompt = self._build_interpretation_prompt(solution, problem_data, detail_level)
         
         try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=4096,
-                temperature=0.5,
+            response = self.api_client.create_message(
                 messages=[{
                     "role": "user",
                     "content": prompt
-                }]
+                }],
+                max_tokens=4096,
+                temperature=0.5
             )
             
-            explanation = response.content[0].text
+            explanation = response['content']
             
             return {
                 "status": "success",
@@ -81,7 +89,7 @@ class ResultInterpreter:
         problem_data: Dict[str, Any],
         detail_level: str
     ) -> str:
-        """Build prompt for Claude to interpret results."""
+        """Build prompt for AI to interpret results."""
         
         detail_instructions = {
             "brief": "Provide a 2-3 sentence summary of the key results and what action should be taken.",

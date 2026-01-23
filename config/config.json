@@ -2,6 +2,7 @@
   "app_name": "OR Assistant",
   "version": "0.1.0",
   "default_solver": "pulp",
+  "ai_provider": "anthropic",
   "default_model": "claude-sonnet-4-5-20250929",
   "api_settings": {
     "max_tokens": 4096,

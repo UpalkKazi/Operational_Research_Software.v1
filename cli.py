@@ -154,14 +154,23 @@ def config():
     
     console.print("[bold blue]Configuration[/bold blue]\n")
     
-    # Check for API key
-    api_key = os.getenv('ANTHROPIC_API_KEY')
-    if api_key:
-        console.print(f"[green]✓[/green] Anthropic API Key: {'*' * 20}{api_key[-8:]}")
+    # Check for API keys
+    anthropic_key = os.getenv('ANTHROPIC_API_KEY')
+    openai_key = os.getenv('OPENAI_API_KEY')
+    ai_provider = os.getenv('AI_PROVIDER', 'auto-detect')
+    
+    if anthropic_key:
+        console.print(f"[green]✓[/green] Anthropic API Key: {'*' * 20}{anthropic_key[-8:]}")
     else:
         console.print("[red]✗ Anthropic API Key: Not configured[/red]")
     
-    console.print(f"Default Model: {os.getenv('DEFAULT_MODEL', 'claude-sonnet-4-5-20250929')}")
+    if openai_key:
+        console.print(f"[green]✓[/green] OpenAI API Key: {'*' * 20}{openai_key[-8:]}")
+    else:
+        console.print("[red]✗ OpenAI API Key: Not configured[/red]")
+    
+    console.print(f"AI Provider: {ai_provider}")
+    console.print(f"Default Model: {os.getenv('DEFAULT_MODEL', 'auto')}")
     console.print(f"Default Solver: {os.getenv('DEFAULT_SOLVER', 'pulp')}")
     console.print(f"Debug Mode: {os.getenv('DEBUG', 'False')}")
 

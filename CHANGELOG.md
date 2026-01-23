@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- OpenAI API support - users can now use either Anthropic Claude or OpenAI models
+- Unified API client (`src/utils/api_client.py`) for seamless provider switching
+- Auto-detection of available API keys
+- `AI_PROVIDER` environment variable to force a specific provider
+- Updated all documentation to reflect multi-provider support
+
 ### Planned
 - Simulation engine integration
 - Advanced scheduling algorithms
@@ -42,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Phase 1: Foundation (Weeks 1-2) ✅
 - Environment setup
 - Basic architecture
-- Claude API integration
+- AI API integration (Anthropic Claude and OpenAI)
 
 ### Phase 2: Core Features (Weeks 3-9) 🚧
 - Problem classification

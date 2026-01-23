@@ -4,6 +4,12 @@
 
 OR Assistant is an AI-powered tool that helps solve Operations Research problems using natural language. Instead of manually formulating mathematical models, you can describe your problem in plain English and get solutions automatically.
 
+OR Assistant supports multiple AI providers:
+- **Anthropic Claude**: High-quality reasoning and analysis
+- **OpenAI**: GPT-4o, GPT-4 Turbo, and other models
+
+You can use either provider - the tool will automatically detect which API key you have configured, or you can explicitly choose a provider.
+
 ## Getting Started
 
 ### Installation

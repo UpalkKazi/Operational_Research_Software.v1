@@ -1,25 +1,42 @@
 """
 Model Generator - Creates mathematical models from problem data
+Supports both Anthropic Claude and OpenAI models.
 """
 
 from typing import Dict, Any, Optional
 import pulp
-from anthropic import Anthropic
 import os
 import json
+from src.utils.api_client import APIClient
 
 
 class ModelGenerator:
     """
     Generates mathematical optimization models from structured problem data.
-    Can use Claude AI to help generate model code dynamically.
+    Can use AI (Anthropic Claude or OpenAI) to help generate model code dynamically.
     """
     
-    def __init__(self, api_key: Optional[str] = None):
-        """Initialize the model generator."""
-        self.api_key = api_key or os.getenv('ANTHROPIC_API_KEY')
-        self.client = Anthropic(api_key=self.api_key) if self.api_key else None
-        self.model = os.getenv('DEFAULT_MODEL', 'claude-sonnet-4-5-20250929')
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None
+    ):
+        """
+        Initialize the model generator.
+        
+        Args:
+            api_key: API key (optional, reads from environment if not provided)
+            provider: 'anthropic' or 'openai' (optional, auto-detects if not provided)
+            model: Model name (optional, uses default if not provided)
+        """
+        try:
+            self.api_client = APIClient(provider=provider, api_key=api_key, model=model)
+            self.model = self.api_client.get_model_name()
+        except ValueError:
+            # API not configured - model generation without AI will still work
+            self.api_client = None
+            self.model = None
     
     def generate(self, problem_data: Dict[str, Any]) -> pulp.LpProblem:
         """
@@ -160,10 +177,10 @@ class ModelGenerator:
         return prob
     
     def _generate_with_claude(self, problem_data: Dict[str, Any]) -> pulp.LpProblem:
-        """Use Claude to generate model code for complex problems."""
+        """Use AI to generate model code for complex problems."""
         
-        if not self.client:
-            raise ValueError("Claude API not configured for dynamic model generation")
+        if not self.api_client:
+            raise ValueError("AI API not configured for dynamic model generation")
         
         prompt = f"""You are an expert in Operations Research using Python and PuLP.
 
@@ -186,14 +203,13 @@ Return ONLY the Python code, no explanations.
 """
         
         try:
-            response = self.client.messages.create(
-                model=self.model,
+            response = self.api_client.create_message(
+                messages=[{"role": "user", "content": prompt}],
                 max_tokens=4096,
-                temperature=0.3,
-                messages=[{"role": "user", "content": prompt}]
+                temperature=0.3
             )
             
-            code = response.content[0].text
+            code = response['content']
             
             # Execute the generated code
             local_vars = {}
@@ -205,7 +221,7 @@ Return ONLY the Python code, no explanations.
                 raise ValueError("Generated code doesn't contain create_model function")
                 
         except Exception as e:
-            raise RuntimeError(f"Model generation with Claude failed: {str(e)}")
+            raise RuntimeError(f"Model generation with AI failed: {str(e)}")
     
     def validate_model(self, model: pulp.LpProblem) -> Dict[str, Any]:
         """

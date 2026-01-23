@@ -1,17 +1,18 @@
 """
-Problem Classifier - Uses Claude AI to identify problem type and extract parameters
+Problem Classifier - Uses AI to identify problem type and extract parameters
+Supports both Anthropic Claude and OpenAI models.
 """
 
 import os
 from typing import Dict, Any, Optional
 import json
-from anthropic import Anthropic
+from src.utils.api_client import APIClient
 
 
 class ProblemClassifier:
     """
     Classifies optimization problems and extracts relevant parameters
-    using Claude AI.
+    using AI (Anthropic Claude or OpenAI).
     """
     
     PROBLEM_TYPES = {
@@ -27,14 +28,22 @@ class ProblemClassifier:
         "cutting_stock": "Minimizing waste when cutting materials"
     }
     
-    def __init__(self, api_key: Optional[str] = None):
-        """Initialize the classifier with Anthropic API."""
-        self.api_key = api_key or os.getenv('ANTHROPIC_API_KEY')
-        if not self.api_key:
-            raise ValueError("ANTHROPIC_API_KEY not found in environment")
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        provider: Optional[str] = None,
+        model: Optional[str] = None
+    ):
+        """
+        Initialize the classifier with AI API.
         
-        self.client = Anthropic(api_key=self.api_key)
-        self.model = os.getenv('DEFAULT_MODEL', 'claude-sonnet-4-5-20250929')
+        Args:
+            api_key: API key (optional, reads from environment if not provided)
+            provider: 'anthropic' or 'openai' (optional, auto-detects if not provided)
+            model: Model name (optional, uses default if not provided)
+        """
+        self.api_client = APIClient(provider=provider, api_key=api_key, model=model)
+        self.model = self.api_client.get_model_name()
     
     def classify(self, problem_description: str) -> Dict[str, Any]:
         """
@@ -50,18 +59,17 @@ class ProblemClassifier:
         prompt = self._build_classification_prompt(problem_description)
         
         try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=4096,
-                temperature=0.3,
+            response = self.api_client.create_message(
                 messages=[{
                     "role": "user",
                     "content": prompt
-                }]
+                }],
+                max_tokens=4096,
+                temperature=0.3
             )
             
             # Extract JSON from response
-            result_text = response.content[0].text
+            result_text = response['content']
             
             # Parse JSON (Claude should return valid JSON)
             result = json.loads(result_text)
@@ -76,7 +84,7 @@ class ProblemClassifier:
             raise RuntimeError(f"Classification failed: {str(e)}")
     
     def _build_classification_prompt(self, description: str) -> str:
-        """Build the prompt for Claude to classify the problem."""
+        """Build the prompt for AI to classify the problem."""
         
         problem_types_list = "\n".join([
             f"- {key}: {value}" 

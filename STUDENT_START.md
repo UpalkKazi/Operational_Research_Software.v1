@@ -34,7 +34,16 @@ pip install -r requirements.txt
 
 ### 2. Get Your API Key (10 minutes)
 
+Choose one provider:
+
+**Option A - Anthropic Claude:**
 1. Go to https://console.anthropic.com
+2. Sign up for an account
+3. Create an API key
+4. Save it somewhere safe!
+
+**Option B - OpenAI:**
+1. Go to https://platform.openai.com/api-keys
 2. Sign up for an account
 3. Create an API key
 4. Save it somewhere safe!
@@ -50,9 +59,13 @@ cp .env.example .env
 nano .env
 ```
 
-Add this line:
+Add one of these lines:
 ```
-ANTHROPIC_API_KEY=your_actual_key_here
+# For Anthropic
+ANTHROPIC_API_KEY=your_anthropic_key_here
+
+# OR for OpenAI
+OPENAI_API_KEY=your_openai_key_here
 ```
 
 ### 4. Test That Everything Works (10 minutes)
@@ -204,13 +217,14 @@ git push
 1. **Read the error message** - It usually tells you what's wrong
 2. **Add print statements** - See what values you're getting
 3. **Check the examples** - Look at the test files
-4. **Use Claude** - Ask Claude for help debugging
+4. **Use AI** - Ask AI (Claude or OpenAI) for help debugging
 5. **Google it** - Someone has had this error before
 6. **Take a break** - Come back with fresh eyes
 
 ### Resources
 - **PuLP Documentation**: https://coin-or.github.io/pulp/
 - **Anthropic Docs**: https://docs.anthropic.com
+- **OpenAI Docs**: https://platform.openai.com/docs
 - **Streamlit Docs**: https://docs.streamlit.io
 - **Stack Overflow**: Search for specific errors
 

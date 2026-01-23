@@ -29,12 +29,12 @@ or-assistant/
 
 **Tasks**:
 1. Install Python 3.10+ and dependencies
-2. Get Anthropic API key
+2. Get AI API key (Anthropic or OpenAI)
 3. Complete PuLP tutorials
 4. Run example problems
 5. Test basic Streamlit app
 
-**Deliverable**: "Hello World" app that calls Claude
+**Deliverable**: "Hello World" app that calls AI API (Claude or OpenAI)
 
 ### Week 3-4: Problem Classification
 **Goal**: Build AI agent that understands problems
@@ -120,11 +120,11 @@ or-assistant/
 ## Key Files to Understand
 
 ### 1. `src/agents/problem_classifier.py`
-**What it does**: Uses Claude to understand problem descriptions
+**What it does**: Uses AI (Claude or OpenAI) to understand problem descriptions
 
 **Key functions**:
 - `classify()`: Main entry point
-- `_build_classification_prompt()`: Creates prompt for Claude
+- `_build_classification_prompt()`: Creates prompt for AI
 
 **How to use**:
 ```python
@@ -170,7 +170,7 @@ print(f"Objective: {solution['objective_value']}")
 ```
 
 ### 4. `src/interpreters/result_interpreter.py`
-**What it does**: Uses Claude to explain solutions
+**What it does**: Uses AI (Claude or OpenAI) to explain solutions
 
 **Key functions**:
 - `interpret()`: Generate explanation
@@ -271,28 +271,42 @@ pytest -m "not integration"
        assert model is not None
    ```
 
-### Debug Claude API Issues
+### Debug AI API Issues
 
 1. **Check API key**:
    ```python
    import os
-   print(os.getenv('ANTHROPIC_API_KEY'))
+   # Check Anthropic
+   print("Anthropic:", os.getenv('ANTHROPIC_API_KEY') is not None)
+   # Check OpenAI
+   print("OpenAI:", os.getenv('OPENAI_API_KEY') is not None)
    ```
 
-2. **Test simple call**:
+2. **Test simple call with unified client**:
    ```python
-   from anthropic import Anthropic
-   client = Anthropic(api_key='your_key')
-   response = client.messages.create(
-       model="claude-sonnet-4-5-20250929",
-       max_tokens=100,
-       messages=[{"role": "user", "content": "Hi"}]
+   from src.utils.api_client import APIClient
+   
+   # Auto-detect provider
+   client = APIClient()
+   response = client.create_message(
+       messages=[{"role": "user", "content": "Hi"}],
+       max_tokens=100
    )
-   print(response.content[0].text)
+   print(response['content'])
    ```
 
-3. **Check costs**:
-   - Monitor usage at https://console.anthropic.com
+3. **Test specific provider**:
+   ```python
+   # Test Anthropic
+   client = APIClient(provider='anthropic')
+   
+   # Test OpenAI
+   client = APIClient(provider='openai', model='gpt-4o')
+   ```
+
+4. **Check costs**:
+   - Anthropic: Monitor usage at https://console.anthropic.com
+   - OpenAI: Monitor usage at https://platform.openai.com/usage
    - Use caching for repeated prompts
    - Reduce max_tokens if needed
 
@@ -400,12 +414,13 @@ except RuntimeError as e:
 - PuLP: https://coin-or.github.io/pulp/
 - OR-Tools: https://developers.google.com/optimization
 - Anthropic: https://docs.anthropic.com
+- OpenAI: https://platform.openai.com/docs
 - Streamlit: https://docs.streamlit.io
 
 ### Getting Help
 1. Check documentation
 2. Review examples
-3. Use Claude for debugging
+3. Use AI (Claude or OpenAI) for debugging
 4. Ask on OR forums
 5. Open GitHub issue
 
@@ -413,7 +428,7 @@ except RuntimeError as e:
 
 ### Week 2
 - [ ] Environment set up
-- [ ] Can call Claude API
+- [ ] Can call AI API (Claude or OpenAI)
 - [ ] Streamlit runs
 - [ ] Understand PuLP basics
 
