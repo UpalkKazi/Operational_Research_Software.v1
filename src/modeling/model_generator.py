@@ -52,31 +52,14 @@ class ModelGenerator:
         problem_type = problem_data.get('problem_type', '')
         
         # Route to appropriate generator
-        if problem_type == 'linear_programming':
-            return self._generate_lp_model(problem_data)
-        elif problem_type == 'transportation':
+        if problem_type == 'transportation':
             return self._generate_transportation_model(problem_data)
         elif problem_type == 'assignment':
             return self._generate_assignment_model(problem_data)
-        elif problem_type in ['integer_programming', 'mixed_integer_programming']:
-            return self._generate_ip_model(problem_data)
         else:
-            # Use Claude to generate model code dynamically
-            return self._generate_with_claude(problem_data)
-    
-    def _generate_lp_model(self, problem_data: Dict[str, Any]) -> pulp.LpProblem:
-        """Generate a basic linear programming model."""
-        
-        # Determine sense (minimize or maximize)
-        sense = pulp.LpMinimize if problem_data.get('objective') == 'minimize' else pulp.LpMaximize
-        
-        # Create problem
-        prob = pulp.LpProblem("LP_Problem", sense)
-        
-        # TODO: Extract variables and constraints from problem_data
-        # This is a placeholder - actual implementation depends on data structure
-        
-        return prob
+            # For all other types like Integer and Linear Programming, use AI based generation
+            # Ensures the LLM's understanding is actually used
+            return self._generate_with_ai(problem_data)
     
     def _generate_transportation_model(self, problem_data: Dict[str, Any]) -> pulp.LpProblem:
         """Generate a transportation problem model."""
@@ -165,19 +148,8 @@ class ModelGenerator:
         
         return prob
     
-    def _generate_ip_model(self, problem_data: Dict[str, Any]) -> pulp.LpProblem:
-        """Generate an integer programming model."""
-        
-        # Similar to LP but with integer variables
-        sense = pulp.LpMinimize if problem_data.get('objective') == 'minimize' else pulp.LpMaximize
-        prob = pulp.LpProblem("IP_Problem", sense)
-        
-        # TODO: Implement based on problem_data structure
-        
-        return prob
-    
-    def _generate_with_claude(self, problem_data: Dict[str, Any]) -> pulp.LpProblem:
-        """Use AI to generate model code for complex problems."""
+    def _generate_with_ai(self, problem_data: Dict[str, Any]) -> pulp.LpProblem:
+        """Use AI to generate model code based on the classified problem type."""
         
         if not self.api_client:
             raise ValueError("AI API not configured for dynamic model generation")
@@ -200,6 +172,26 @@ Requirements:
 5. Return only the complete, executable Python code
 
 Return ONLY the Python code, no explanations.
+
+Example structure:
+```python
+import pulp
+
+def create_model():
+    # Create problem
+    prob = pulp.LpProblem("Problem_Name", pulp.LpMinimize)  # or LpMaximize
+    
+    # Define variables
+    # ... your variables here ...
+    
+    # Set objective
+    prob += objective_expression, "Objective"
+    
+    # Add constraints
+    # ... your constraints here ...
+    
+    return prob
+
 """
         
         try:
@@ -210,18 +202,33 @@ Return ONLY the Python code, no explanations.
             )
             
             code = response['content']
+
+            # Clean up the code (remove markdown if present)
+            if '```python' in code:
+                code = code.split('```python')[1].split('```')[0]
+            elif '```' in code:
+                code = code.split('```')[1].split('```')[0]
+            
+            code = code.strip()
             
             # Execute the generated code
             local_vars = {}
             exec(code, {"pulp": pulp}, local_vars)
             
             if 'create_model' in local_vars:
-                return local_vars['create_model']()
+                model = local_vars['create_model']()
+            
+            # Validate that the model was actually created with content
+                validation = self.validate_model(model)
+                if not validation['valid']:
+                    raise ValueError(f"Generated model is invalid: {validation['issues']}")
+                    
+                return model
             else:
                 raise ValueError("Generated code doesn't contain create_model function")
                 
         except Exception as e:
-            raise RuntimeError(f"Model generation with AI failed: {str(e)}")
+            raise RuntimeError(f"Model generation with AI failed: {str(e)}\n\nGenerated code:\n{code if 'code' in locals() else 'No code generated'}")
     
     def validate_model(self, model: pulp.LpProblem) -> Dict[str, Any]:
         """
@@ -259,23 +266,45 @@ if __name__ == "__main__":
     # Example usage
     generator = ModelGenerator()
     
+    # Test with a simple problem
     test_data = {
-        "problem_type": "transportation",
-        "objective": "minimize",
+        "problem_type": "integer_programming",
+        "objective": "maximize",
+        "objective_description": "profit from producing widgets",
+        "decision_variables": ["number of widgets to produce"],
+        "constraints": [
+            "Cannot exceed 100 hours of labor",
+            "Cannot exceed 120 kg of material"
+        ],
         "parameters": {
-            "supply": [100, 150, 200],
-            "demand": [80, 120, 90, 110],
-            "costs": [
-                [5, 8, 6, 7],
-                [6, 7, 9, 5],
-                [8, 6, 7, 9]
-            ]
-        }
+            "profit_per_widget": 50,
+            "labor_hours_per_widget": 2,
+            "material_kg_per_widget": 3,
+            "available_labor_hours": 100,
+            "available_material_kg": 120
+        },
+        "confidence": 0.95,
+        "notes": "Widget production must be integer values"
     }
     
+    print("Generating model from problem data...")
     model = generator.generate(test_data)
-    validation = generator.validate_model(model)
     
-    print("Model validation:", validation)
-    print("\nModel variables:", len(model.variables()))
-    print("Model constraints:", len(model.constraints))
+    validation = generator.validate_model(model)
+    print("\nModel validation:", validation)
+    
+    if validation['valid']:
+        print(f"\n✓ Model successfully created!")
+        print(f"  Variables: {validation['num_variables']}")
+        print(f"  Constraints: {validation['num_constraints']}")
+        
+        # Try to solve it
+        print("\nAttempting to solve...")
+        model.solve()
+        print(f"Status: {pulp.LpStatus[model.status]}")
+        
+        if model.status == 1:  # Optimal
+            print(f"Objective value: {pulp.value(model.objective)}")
+            print("\nVariable values:")
+            for v in model.variables():
+                print(f"  {v.name} = {v.varValue}")
