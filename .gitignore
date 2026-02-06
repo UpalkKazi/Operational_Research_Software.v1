@@ -75,6 +75,9 @@ site/
 # Streamlit
 .streamlit/secrets.toml
 
+# Local assistant/tooling config
+.claude/
+
 # OS
 Thumbs.db
 .DS_Store

@@ -36,7 +36,7 @@ Enhanced `_generate_with_ai()` to:
 
 ## Testing
 ```bash
-python test_llm_connection.py
+./venv/bin/python -m pytest -q tests/test_llm_connect.py
 ```
 
 ## Files Changed
