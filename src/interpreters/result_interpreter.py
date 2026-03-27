@@ -3,7 +3,7 @@ Result Interpreter - Uses AI to explain solutions in plain language
 Supports both Anthropic Claude and OpenAI models.
 """
 
-import os
+import re
 from typing import Dict, Any, Optional
 import json
 from src.utils.api_client import APIClient
@@ -14,330 +14,268 @@ class ResultInterpreter:
     Interprets optimization results and generates human-readable explanations
     using AI (Anthropic Claude or OpenAI).
     """
-    
+
     def __init__(
         self,
         api_key: Optional[str] = None,
         provider: Optional[str] = None,
-        model: Optional[str] = None
+        model: Optional[str] = None,
     ):
-        """
-        Initialize the interpreter with AI API.
-        
-        Args:
-            api_key: API key (optional, reads from environment if not provided)
-            provider: 'anthropic' or 'openai' (optional, auto-detects if not provided)
-            model: Model name (optional, uses default if not provided)
-        """
         self.api_client = APIClient(provider=provider, api_key=api_key, model=model)
         self.model = self.api_client.get_model_name()
-    
+
+    # ------------------------------------------------------------------
+    #  3-layer JSON parser (same logic as ProblemClassifier)
+    # ------------------------------------------------------------------
+
+    _FENCE_RE = re.compile(r"```(?:json)?\s*([\s\S]*?)```", re.DOTALL)
+
+    @classmethod
+    def _parse_json(cls, text: str) -> Dict[str, Any]:
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+
+        fence = cls._FENCE_RE.search(text)
+        if fence:
+            try:
+                return json.loads(fence.group(1).strip())
+            except json.JSONDecodeError:
+                pass
+
+        first = text.find("{")
+        last = text.rfind("}")
+        if first != -1 and last != -1 and last > first:
+            try:
+                return json.loads(text[first:last + 1])
+            except json.JSONDecodeError:
+                pass
+
+        raise json.JSONDecodeError("No valid JSON found in response", text, 0)
+
+    # ------------------------------------------------------------------
+    #  Public API
+    # ------------------------------------------------------------------
+
     def interpret(
-        self, 
-        solution: Dict[str, Any], 
+        self,
+        solution: Dict[str, Any],
         problem_data: Dict[str, Any],
-        detail_level: str = "medium"
     ) -> Dict[str, Any]:
         """
-        Generate a plain-language explanation of the solution.
-        
-        Args:
-            solution: Solution dictionary from SolverInterface
-            problem_data: Original problem data from classifier
-            detail_level: 'brief', 'medium', or 'detailed'
-            
-        Returns:
-            Dictionary with various explanation formats
+        Generate an AI-powered, plain-language interpretation of a solution.
+
+        Returns a dict with keys: summary, key_findings, recommendations,
+        warnings, business_impact.
         """
-        
-        # Check if solution is optimal
-        if solution["status"] != "Optimal":
-            return self._explain_non_optimal(solution, problem_data)
-        
-        prompt = self._build_interpretation_prompt(solution, problem_data, detail_level)
-        
+        if not solution.get('is_optimal', False):
+            return self._fallback_interpret(solution, problem_data)
+
+        prompt = self._build_prompt(solution, problem_data)
+
         try:
             response = self.api_client.create_message(
-                messages=[{
-                    "role": "user",
-                    "content": prompt
-                }],
-                max_tokens=4096,
-                temperature=0.5
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=2048,
+                temperature=0.4,
             )
-            
-            explanation = response['content']
-            
-            return {
-                "status": "success",
-                "explanation": explanation,
-                "solution_summary": self._create_summary(solution),
-                "key_insights": self._extract_key_insights(solution),
-                "recommendations": []  # Could be enhanced
-            }
-            
-        except Exception as e:
-            return {
-                "status": "error",
-                "error": str(e),
-                "explanation": "Failed to generate explanation"
-            }
-    
-    def _build_interpretation_prompt(
-        self, 
-        solution: Dict[str, Any], 
+            return self._parse_json(response['content'])
+
+        except Exception:
+            return self._fallback_interpret(solution, problem_data)
+
+    # ------------------------------------------------------------------
+    #  Prompt builder
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _top_nonzero(variables: Dict[str, Any], limit: int = 10) -> Dict[str, Any]:
+        """Return the top *limit* non-zero variable values."""
+        nonzero = {
+            k: v for k, v in variables.items()
+            if v is not None and abs(v) > 1e-8
+        }
+        return dict(list(nonzero.items())[:limit])
+
+    def _build_prompt(
+        self,
+        solution: Dict[str, Any],
         problem_data: Dict[str, Any],
-        detail_level: str
     ) -> str:
-        """Build prompt for AI to interpret results."""
-        
-        detail_instructions = {
-            "brief": "Provide a 2-3 sentence summary of the key results and what action should be taken.",
-            "medium": "Provide a clear explanation of the results, key decisions, and their business impact in 1-2 paragraphs.",
-            "detailed": "Provide a comprehensive analysis including the solution, implications, trade-offs, and recommendations."
-        }
-        
-        prompt = f"""You are an Operations Research consultant explaining optimization results to a business stakeholder.
+        top_vars = self._top_nonzero(solution.get('variables', {}))
+        vars_json = json.dumps(top_vars, indent=2, default=str)
 
-PROBLEM CONTEXT:
-- Type: {problem_data.get('problem_type', 'Unknown')}
-- Objective: {problem_data.get('objective', 'Unknown')} {problem_data.get('objective_description', '')}
-- Decision Variables: {problem_data.get('decision_variables', [])}
-- Constraints: {problem_data.get('constraints', [])}
+        return (
+            "You are an Operations Research consultant explaining "
+            "optimization results to a business stakeholder.\n\n"
+            f"Problem type: {problem_data.get('problem_type', 'unknown')}\n"
+            f"Objective: {problem_data.get('objective', 'minimize')} — "
+            f"{problem_data.get('objective_description', '')}\n"
+            f"Optimal objective value: {solution.get('objective_value')}\n"
+            f"Number of variables: {solution.get('num_variables', '?')}\n"
+            f"Number of constraints: {solution.get('num_constraints', '?')}\n\n"
+            f"Top non-zero decision-variable values:\n{vars_json}\n\n"
+            "Explain what these numbers mean in plain business language.\n\n"
+            "Return ONLY this JSON (no other text):\n"
+            "{\n"
+            '  "summary": "2-sentence plain English answer — what is the optimal solution?",\n'
+            '  "key_findings": ["Finding 1 with specific number", "Finding 2", "Finding 3"],\n'
+            '  "recommendations": ["Actionable step 1", "Actionable step 2"],\n'
+            '  "warnings": ["Any tight constraints or risks noted"],\n'
+            '  "business_impact": "One paragraph about what this means practically"\n'
+            "}"
+        )
 
-SOLUTION:
-- Status: {solution['status']}
-- Objective Value: {solution.get('objective_value', 'N/A')}
-- Solve Time: {solution.get('solve_time', 'N/A')} seconds
-- Number of Variables: {solution['model_info']['num_variables']}
-- Number of Constraints: {solution['model_info']['num_constraints']}
+    # ------------------------------------------------------------------
+    #  Deterministic fallback (no AI call)
+    # ------------------------------------------------------------------
 
-KEY RESULTS:
-{json.dumps(solution.get('variables', {}), indent=2)}
-
-TASK:
-{detail_instructions.get(detail_level, detail_instructions['medium'])}
-
-Focus on:
-1. What decisions should be made (the variable values)
-2. What the business impact is (the objective value)
-3. Any important patterns or insights
-4. Any constraints that are binding (tight)
-
-Write in clear, business-friendly language. Avoid mathematical jargon where possible.
-"""
-        return prompt
-    
-    def _explain_non_optimal(
-        self, 
-        solution: Dict[str, Any], 
-        problem_data: Dict[str, Any]
+    @staticmethod
+    def _fallback_interpret(
+        solution: Dict[str, Any],
+        problem_data: Dict[str, Any],
     ) -> Dict[str, Any]:
-        """Explain why a solution is not optimal."""
-        
-        status = solution["status"]
-        
-        explanations = {
-            "Infeasible": """
-The problem is infeasible, meaning there is no solution that satisfies all constraints.
-This typically happens when:
-- Constraints are contradictory
-- Demands exceed available supply
-- Requirements are impossible to meet simultaneously
+        """Basic interpretation without calling the AI."""
+        ptype = problem_data.get('problem_type', 'optimization')
+        objective = problem_data.get('objective', 'optimal')
+        obj_val = solution.get('objective_value')
 
-Recommendations:
-- Review and relax some constraints
-- Check if data is correct
-- Consider if the problem formulation needs adjustment
-            """,
-            "Unbounded": """
-The problem is unbounded, meaning the objective can be improved infinitely.
-This usually indicates:
-- Missing constraints on variables
-- Incorrect problem formulation
-- Some variables have no upper bounds when they should
+        try:
+            obj_str = f"{float(obj_val):.4f}"
+        except (TypeError, ValueError):
+            obj_str = str(obj_val)
 
-Recommendations:
-- Add appropriate bounds to decision variables
-- Review the problem formulation
-- Check if constraints are missing
-            """,
-            "Time Limit Reached": """
-The solver reached the time limit before finding an optimal solution.
-The current best solution may be:
-- Near-optimal (check the gap)
-- Usable for practical purposes
+        summary = (
+            f"The {ptype} was solved optimally. "
+            f"The {objective} value is {obj_str}."
+        )
 
-Recommendations:
-- Increase the time limit
-- Use a commercial solver for better performance
-- Simplify the problem if possible
-            """
-        }
-        
+        variables = solution.get('variables', {})
+        sorted_vars = sorted(
+            ((k, v) for k, v in variables.items()
+             if v is not None and abs(v) > 1e-8),
+            key=lambda kv: abs(kv[1]),
+            reverse=True,
+        )
+        key_findings = [
+            f"Variable {name} = {val} units"
+            for name, val in sorted_vars[:5]
+        ]
+
+        num_vars = solution.get('num_variables', '?')
+        num_cons = solution.get('num_constraints', '?')
+        solve_time = solution.get('solve_time')
+        try:
+            time_str = f"{float(solve_time):.2f}"
+        except (TypeError, ValueError):
+            time_str = str(solve_time)
+
         return {
-            "status": "non_optimal",
-            "explanation": explanations.get(status, f"Solution status: {status}"),
-            "solver_status": status,
-            "recommendations": []
+            'summary': summary,
+            'key_findings': key_findings,
+            'recommendations': [
+                'Review decision variables above zero for resource allocation insights',
+            ],
+            'warnings': solution.get('warnings', []),
+            'business_impact': (
+                f"Solved {num_vars} variables with "
+                f"{num_cons} constraints in {time_str} seconds."
+            ),
         }
-    
-    def _create_summary(self, solution: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a concise summary of the solution."""
-        
-        # Count variables at bounds
-        at_bounds = 0
-        for var_info in solution.get('variables', {}).values():
-            value = var_info.get('value', 0)
-            lower = var_info.get('lower_bound')
-            upper = var_info.get('upper_bound')
-            
-            if lower is not None and abs(value - lower) < 1e-6:
-                at_bounds += 1
-            elif upper is not None and abs(value - upper) < 1e-6:
-                at_bounds += 1
-        
-        # Count binding constraints
-        binding = 0
-        for const_info in solution.get('constraints', {}).values():
-            slack = const_info.get('slack', 1)
-            if slack is not None and abs(slack) < 1e-6:
-                binding += 1
-        
-        return {
-            "objective_value": solution.get('objective_value'),
-            "status": solution.get('status'),
-            "solve_time": solution.get('solve_time'),
-            "total_variables": len(solution.get('variables', {})),
-            "total_constraints": len(solution.get('constraints', {})),
-            "variables_at_bounds": at_bounds,
-            "binding_constraints": binding
-        }
-    
-    def _extract_key_insights(self, solution: Dict[str, Any]) -> list:
-        """Extract key insights from the solution."""
-        
-        insights = []
-        
-        summary = self._create_summary(solution)
-        
-        # Insight about binding constraints
-        if summary['binding_constraints'] > 0:
-            insights.append(
-                f"{summary['binding_constraints']} constraint(s) are binding, "
-                "indicating these are the critical limitations."
-            )
-        
-        # Insight about variables at bounds
-        if summary['variables_at_bounds'] > 0:
-            insights.append(
-                f"{summary['variables_at_bounds']} variable(s) are at their limits, "
-                "suggesting potential for improvement if bounds are relaxed."
-            )
-        
-        return insights
-    
+
+    # ------------------------------------------------------------------
+    #  Report generation
+    # ------------------------------------------------------------------
+
     def generate_report(
         self,
         solution: Dict[str, Any],
         problem_data: Dict[str, Any],
-        format: str = "markdown"
+        fmt: str = "markdown",
     ) -> str:
-        """
-        Generate a formatted report.
-        
-        Args:
-            solution: Solution data
-            problem_data: Problem data
-            format: 'markdown', 'html', or 'text'
-            
-        Returns:
-            Formatted report string
-        """
-        
-        interpretation = self.interpret(solution, problem_data, detail_level="detailed")
-        summary = self._create_summary(solution)
-        
-        if format == "markdown":
-            return self._generate_markdown_report(interpretation, summary, solution, problem_data)
-        elif format == "html":
-            return self._generate_html_report(interpretation, summary, solution, problem_data)
-        else:
-            return self._generate_text_report(interpretation, summary, solution, problem_data)
-    
-    def _generate_markdown_report(
-        self,
-        interpretation: Dict[str, Any],
-        summary: Dict[str, Any],
+        interpretation = self.interpret(solution, problem_data)
+
+        if fmt == "markdown":
+            return self._markdown_report(interpretation, solution, problem_data)
+        return self._text_report(interpretation, solution, problem_data)
+
+    @staticmethod
+    def _markdown_report(
+        interp: Dict[str, Any],
         solution: Dict[str, Any],
-        problem_data: Dict[str, Any]
+        problem_data: Dict[str, Any],
     ) -> str:
-        """Generate a Markdown-formatted report."""
-        
-        report = f"""# Optimization Results Report
+        lines = [
+            "# Optimization Results Report\n",
+            "## Summary",
+            interp.get('summary', ''), "",
+            "## Key Findings",
+        ]
+        for f in interp.get('key_findings', []):
+            lines.append(f"- {f}")
 
-## Problem Summary
-- **Type**: {problem_data.get('problem_type', 'Unknown')}
-- **Objective**: {problem_data.get('objective', '')} {problem_data.get('objective_description', '')}
+        lines += ["", "## Recommendations"]
+        for r in interp.get('recommendations', []):
+            lines.append(f"- {r}")
 
-## Solution Summary
-- **Status**: {summary['status']}
-- **Objective Value**: {summary['objective_value']}
-- **Solve Time**: {summary['solve_time']}s
-- **Variables**: {summary['total_variables']}
-- **Constraints**: {summary['total_constraints']}
+        if interp.get('warnings'):
+            lines += ["", "## Warnings"]
+            for w in interp['warnings']:
+                lines.append(f"- ⚠️ {w}")
 
-## Interpretation
-{interpretation.get('explanation', 'No explanation available')}
+        lines += ["", "## Business Impact", interp.get('business_impact', '')]
 
-## Key Insights
-"""
-        for insight in interpretation.get('key_insights', []):
-            report += f"- {insight}\n"
-        
-        report += "\n## Decision Variables\n"
-        for var_name, var_info in solution.get('variables', {}).items():
-            report += f"- **{var_name}**: {var_info.get('value', 0)}\n"
-        
-        return report
-    
-    def _generate_html_report(self, *args) -> str:
-        """Generate HTML-formatted report."""
-        # TODO: Implement HTML generation
-        return "<html><body><h1>Report</h1></body></html>"
-    
-    def _generate_text_report(self, *args) -> str:
-        """Generate plain text report."""
-        # TODO: Implement text generation
-        return "Text report"
+        top = {
+            k: v for k, v in solution.get('variables', {}).items()
+            if v is not None and abs(v) > 1e-8
+        }
+        if top:
+            lines += ["", "## Decision Variables (non-zero)"]
+            for name, val in list(top.items())[:20]:
+                lines.append(f"- **{name}** = {val}")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _text_report(
+        interp: Dict[str, Any],
+        solution: Dict[str, Any],
+        problem_data: Dict[str, Any],
+    ) -> str:
+        parts = [
+            "=== Optimization Results ===",
+            interp.get('summary', ''),
+            "",
+            "Key Findings:",
+        ]
+        for f in interp.get('key_findings', []):
+            parts.append(f"  - {f}")
+        parts += ["", "Business Impact:", interp.get('business_impact', '')]
+        return "\n".join(parts)
 
 
 if __name__ == "__main__":
-    # Example usage
     interpreter = ResultInterpreter()
-    
+
     test_solution = {
         "status": "Optimal",
+        "is_optimal": True,
         "objective_value": 1250.0,
         "solve_time": 2.3,
-        "model_info": {
-            "num_variables": 12,
-            "num_constraints": 7,
-            "sense": "minimize"
-        },
-        "variables": {
-            "x_0_0": {"value": 50, "lower_bound": 0, "upper_bound": None},
-            "x_0_1": {"value": 50, "lower_bound": 0, "upper_bound": None},
-            "x_1_0": {"value": 30, "lower_bound": 0, "upper_bound": None}
-        },
-        "constraints": {}
+        "num_variables": 12,
+        "num_constraints": 7,
+        "solver_name": "pulp",
+        "variables": {"x_0_0": 50, "x_0_1": 50, "x_1_0": 30},
+        "warnings": [],
+        "error_message": "",
     }
-    
+
     test_problem = {
         "problem_type": "transportation",
         "objective": "minimize",
-        "objective_description": "total transportation cost"
+        "objective_description": "total transportation cost",
     }
-    
+
     result = interpreter.interpret(test_solution, test_problem)
-    print(result['explanation'])
+    print(json.dumps(result, indent=2))

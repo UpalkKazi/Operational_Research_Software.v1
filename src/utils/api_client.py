@@ -172,3 +172,52 @@ class APIClient:
     def get_model_name(self) -> str:
         """Get the current model name."""
         return self.model
+
+    def test_connection(self) -> bool:
+        """
+        Test the API connection and print solver availability.
+
+        Checks:
+          1. AI API reachability (Anthropic / OpenAI).
+          2. CVXPY solver availability (via ``verify_cvxpy_solvers``).
+
+        Returns True if the AI API responds, False otherwise.
+        """
+        ok = False
+        try:
+            response = self.create_message(
+                messages=[{"role": "user", "content": "Reply OK"}],
+                max_tokens=10,
+                temperature=0,
+            )
+            print(f"Connection successful! Model: {response['model']}")
+            print(f"Response: {response['content']}")
+            ok = True
+        except Exception as e:
+            print(f"Connection failed: {e}")
+
+        try:
+            from src.utils.solver_utils import verify_cvxpy_solvers
+            cvxpy_info = verify_cvxpy_solvers()
+            print(f"\nCVXPY available : {cvxpy_info['available']}")
+            if cvxpy_info['available']:
+                print(f"CVXPY solvers   : {', '.join(cvxpy_info['solvers'])}")
+                print(f"CVXPY default   : {cvxpy_info['default']}")
+            elif cvxpy_info['error']:
+                print(f"CVXPY error     : {cvxpy_info['error']}")
+        except Exception as e:
+            print(f"\nCVXPY check skipped: {e}")
+
+        return ok
+
+
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    client = APIClient()
+    print(f"Provider: {client.get_provider_name()}")
+    print(f"Model: {client.get_model_name()}")
+    print(f"API Key: {client.api_key[:20]}...{client.api_key[-6:]}")
+    print("Testing connection...")
+    client.test_connection()

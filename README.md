@@ -1,162 +1,144 @@
-# OR Assistant - AI-Powered Operations Research Tool
+# OR Assistant - AI-Powered Operations Research Solutions
 
-An intelligent assistant that helps solve Operations Research problems using natural language. Built with AI (Anthropic Claude or OpenAI) and open-source OR solvers.
-
-## 🎯 Project Overview
-
-OR Assistant bridges the gap between business problems and mathematical optimization by:
-- Understanding problem descriptions in natural language
-- Automatically formulating mathematical models
-- Solving problems using industry-standard solvers
-- Providing clear, actionable insights
+An intelligent Streamlit application that helps users solve Operations Research problems using natural language descriptions. The system automatically classifies problems, generates mathematical models, solves them using appropriate solvers, and provides interpretations of results.
 
 ## 🚀 Features
 
-- **Natural Language Interface**: Describe problems in plain English
-- **Multi-Problem Support**: LP, IP, Transportation, Assignment, Scheduling
-- **Multiple Solvers**: PuLP, OR-Tools, CVXPY integration
-- **Smart Interpretation**: AI-powered results explanation
-- **Visualization**: Charts, tables, and network diagrams
-- **Simulation Engine**: What-if scenario analysis
+- **Natural Language Input**: Describe your OR problem in plain English
+- **Automatic Problem Classification**: AI identifies problem types (LP, IP, MIP, Transportation, etc.)
+- **Model Generation**: Converts problem descriptions to mathematical models
+- **Multiple Solvers**: Supports PuLP/CBC, CVXPY with various backends (OSQP, GLPK, SCIP)
+- **File Upload Support**: Import problems from Excel, CSV, Word, PDF, or MPS files
+- **MIPLIB Integration**: Direct access to benchmark problems from MIPLIB
+- **Interactive Visualizations**: Charts and graphs to understand solutions
+- **Result Interpretation**: AI explains what the solution means in business terms
 
 ## 📋 Prerequisites
 
-- Python 3.10 or higher
-- AI API key (choose one):
-  - Anthropic API key (get from https://console.anthropic.com)
-  - OpenAI API key (get from https://platform.openai.com/api-keys)
-- Optional: Gurobi academic license for advanced solving
+- Python 3.11 or higher
+- API keys for either:
+  - Anthropic Claude API (recommended)
+  - OpenAI API
 
 ## 🛠️ Installation
 
-### 1. Clone the repository
+1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/or-assistant.git
-cd or-assistant
+git clone https://github.com/UpalkKazi/Operational_Research_Software.v1.git
+cd Operational_Research_Software.v1
 ```
 
-### 2. Create virtual environment
+2. Create a virtual environment:
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# On Windows:
+venv\Scripts\activate
+# On macOS/Linux:
+source venv/bin/activate
 ```
 
-### 3. Install dependencies
+3. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4. Set up environment variables
+4. Set up environment variables:
+   - Copy `.env.example` to `.env`
+   - Add your API key:
+     ```
+     ANTHROPIC_API_KEY=your_anthropic_key_here
+     # OR
+     OPENAI_API_KEY=your_openai_key_here
+     ```
+
+5. (Optional) Install additional solvers:
 ```bash
-cp .env.example .env
-# Edit .env and add your API key:
-# - ANTHROPIC_API_KEY (for Claude) OR
-# - OPENAI_API_KEY (for OpenAI)
-# Optionally set AI_PROVIDER to 'anthropic' or 'openai' to force a provider
+# For SCIP support:
+conda install -c conda-forge pyscipopt
 ```
 
-## 🏃 Quick Start
+## 🏃‍♂️ Running the Application
 
-### Run the Streamlit App
 ```bash
 streamlit run app.py
 ```
 
-### Use the CLI
-```bash
-python cli.py --problem "Minimize transportation costs..."
-```
+The application will open in your default browser at `http://localhost:8501`
 
-### Python API
-```python
-from src.agents.problem_classifier import ProblemClassifier
-from src.modeling.model_generator import ModelGenerator
-from src.solvers.solver_interface import SolverInterface
+## 📖 Usage
 
-# Classify problem
-classifier = ProblemClassifier()
-problem_data = classifier.classify("I need to minimize costs...")
+1. **Describe Your Problem**: Enter a natural language description of your optimization problem
+2. **Select Solver**: Choose a solver or let the app auto-detect the best one
+3. **Solve**: Click "Solve Problem" to run the optimization pipeline
+4. **View Results**: See the solution, interpretation, and visualizations
 
-# Generate model
-generator = ModelGenerator()
-model = generator.generate(problem_data)
+### Example Problems
 
-# Solve
-solver = SolverInterface()
-solution = solver.solve(model)
-```
+Click "Load Example" to see sample problems for:
+- Linear Programming (furniture production)
+- Integer Programming (delivery optimization)
+- Transportation (minimize shipping costs)
+- Assignment (worker-task allocation)
+- Scheduling (job-machine scheduling)
 
-## 📁 Project Structure
+### File Upload
+
+Support for various file formats:
+- **Spreadsheets**: .xlsx, .xls, .csv
+- **Documents**: .docx, .doc, .txt, .pdf
+- **MPS Files**: .mps, .mps.gz (standard OR format)
+
+## 🏗️ Architecture
 
 ```
 or-assistant/
+├── app.py                    # Main Streamlit application
 ├── src/
-│   ├── agents/              # AI agents for problem understanding
-│   ├── modeling/            # Mathematical model generators
+│   ├── agents/              # AI components
+│   │   ├── problem_classifier.py
+│   │   └── result_interpreter.py
+│   ├── ingestion/           # File parsing
+│   │   ├── file_parser.py
+│   │   ├── data_extractor.py
+│   │   └── miplib_loader.py
+│   ├── modeling/            # Model generation
+│   │   └── model_generator.py
 │   ├── solvers/             # Solver interfaces
-│   ├── interpreters/        # Results interpretation
-│   ├── simulation/          # Simulation engines
-│   └── utils/               # Helper functions
-├── tests/                   # Unit and integration tests
-├── data/
-│   ├── examples/            # Example problems
-│   └── templates/           # Problem templates
-├── docs/                    # Documentation
-├── config/                  # Configuration files
-├── app.py                   # Streamlit web interface
-├── cli.py                   # Command-line interface
-└── requirements.txt         # Python dependencies
+│   │   ├── solver_interface.py
+│   │   └── solver_router.py
+│   ├── storage/             # Caching
+│   │   └── miplib_cache.py
+│   ├── ui/                  # UI components
+│   │   ├── solver_settings.py
+│   │   └── solver_progress.py
+│   ├── utils/               # Utilities
+│   │   └── api_client.py
+│   └── visualization/       # Chart generation
+│       └── chart_generator.py
+├── requirements.txt
+├── .env.example
+└── README.md
 ```
-
-## 📖 Documentation
-
-- [User Guide](docs/USER_GUIDE.md)
-- [Development Guide](docs/DEVELOPMENT.md)
-- [API Reference](docs/API_REFERENCE.md)
-- [Examples](docs/EXAMPLES.md)
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=src tests/
-
-# Run specific test
-pytest tests/test_classifier.py
-```
-
-## 🗓️ Development Timeline
-
-- **Weeks 1-2**: Foundation & Setup ✅
-- **Weeks 3-4**: AI Agent & Problem Detection
-- **Weeks 5-7**: Problem Modeling Engine
-- **Weeks 8-9**: Solver Integration
-- **Weeks 10-11**: Results Interpretation
-- **Week 12**: Integration & Polish
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## 📝 License
 
-This project is licensed under the MIT License - see [LICENSE](LICENSE) file.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## 🙏 Acknowledgments
 
-- Anthropic Claude AI
-- OpenAI
-- Google OR-Tools
-- COIN-OR PuLP
-- CVXPY Team
+- Built with [Streamlit](https://streamlit.io/)
+- Uses [PuLP](https://coin-or.github.io/pulp/) and [CVXPY](https://www.cvxpy.org/) for optimization
+- Powered by [Anthropic Claude](https://www.anthropic.com/) or [OpenAI](https://openai.com/) for AI capabilities
+- MIPLIB problems from [MIPLIB 2017](https://miplib.zib.de/)
 
 ## 📧 Contact
 
-For questions or support, please open an issue or contact [your-email@example.com]
-
-## 🎓 Academic Use
-
-This project was developed as part of NDSU's initiative to bridge AI and local industry needs.
+For questions or support, please open an issue on GitHub.
