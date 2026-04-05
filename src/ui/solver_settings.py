@@ -71,7 +71,17 @@ def render_solver_settings():
     if "solver_type" not in st.session_state:
         st.session_state.solver_type = "auto"
     if "max_time" not in st.session_state:
-        st.session_state.max_time = 60
+        # Adaptive default: larger problems get more time on the slider
+        _pdata = st.session_state.get('problem_data', {})
+        _nv = _pdata.get('num_variables', 0) or 0
+        if _nv > 20_000:
+            st.session_state.max_time = 300
+        elif _nv > 5_000:
+            st.session_state.max_time = 180
+        elif _nv > 500:
+            st.session_state.max_time = 120
+        else:
+            st.session_state.max_time = 60
     
     # Create list of labels for the selectbox
     solver_labels = [opt["label"] for opt in SOLVER_OPTIONS.values()]

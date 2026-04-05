@@ -669,6 +669,7 @@ class ModelGenerator:
         _CAP_KEYS = (
             'capacity', 'max_weight', 'weight_limit', 'knapsack_capacity',
             'bag_capacity', 'limit', 'total_capacity',
+            'budget', 'investment_budget',  # FIX: classifier uses 'budget' for investment problems
         )
         capacity = None
         for d in search_dicts:
@@ -683,6 +684,7 @@ class ModelGenerator:
         # --- Weights -----------------------------------------------------
         _WEIGHT_KEYS = (
             'weights', 'weight', 'item_weights', 'sizes', 'volumes',
+            'costs', 'cost', 'investment_costs', 'prices',  # FIX: investment problems use 'costs' as weights
         )
         weights = self._first_numeric_list(search_dicts, _WEIGHT_KEYS)
 
@@ -690,11 +692,12 @@ class ModelGenerator:
         _VALUE_KEYS = (
             'values', 'value', 'profits', 'item_values',
             'benefits', 'rewards',
+            'returns', 'return', 'investment_returns', 'gains',  # FIX: investment problems use 'returns' as values
         )
         values = self._first_numeric_list(search_dicts, _VALUE_KEYS)
 
         # --- Item names (optional) ----------------------------------------
-        _NAME_KEYS = ('item_names', 'items', 'names')
+        _NAME_KEYS = ('item_names', 'items', 'names', 'project_names')  # FIX: classifier uses 'project_names'
         item_names = None
         for d in search_dicts:
             for k in _NAME_KEYS:
@@ -1521,11 +1524,12 @@ class ModelGenerator:
             model = self._build_mps_with_pulp(parsed_mps)
 
         # --- Build problem_data compatible with ResultInterpreter -------
+        _obj_sense = parsed_mps.get('objective_sense', 'minimize')
         problem_data: Dict[str, Any] = {
             'problem_type': detected_type,
-            'objective': 'minimize',
+            'objective': _obj_sense,
             'objective_description': (
-                f"Minimize {parsed_mps.get('objective_name', '?')} "
+                f"{_obj_sense.capitalize()} {parsed_mps.get('objective_name', '?')} "
                 f"(MPS benchmark)"
             ),
             'source': 'miplib',
@@ -1583,7 +1587,8 @@ class ModelGenerator:
     def _build_mps_with_pulp(parsed_mps: Dict[str, Any]) -> pulp.LpProblem:
         """Build a ``pulp.LpProblem`` from the structured MPS dict."""
         name = parsed_mps.get('name', 'mps_problem') or 'mps_problem'
-        prob = pulp.LpProblem(name, pulp.LpMinimize)
+        _sense = pulp.LpMaximize if parsed_mps.get('objective_sense') == 'maximize' else pulp.LpMinimize
+        prob = pulp.LpProblem(name, _sense)
 
         var_names = parsed_mps.get('variables', [])
         vbounds = parsed_mps.get('variable_bounds', {})

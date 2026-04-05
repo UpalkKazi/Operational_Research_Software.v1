@@ -290,9 +290,17 @@ class FileParser:
 
         section = ''
         marker_int = False  # tracks MARKER INT / INTEND blocks
+        objective_sense = 'minimize'  # FIX: default, overridden by OBJSENSE section if present
 
         for lineno, raw_line in enumerate(lines, 1):
             line = raw_line.rstrip()
+            
+            # FIX: strip inline comments and skip full-line comments (MPS uses $, \, * as comment chars)
+            for comment_char in ('$', '\\', '*'):
+                if comment_char in line:
+                    line = line[:line.index(comment_char)].rstrip()
+                    break
+            
             if not line:
                 continue
 
@@ -305,7 +313,7 @@ class FileParser:
                     problem_name = parts[1].strip() if len(parts) > 1 else ''
                     continue
                 if token in ('ROWS', 'COLUMNS', 'RHS', 'RANGES',
-                             'BOUNDS', 'ENDATA'):
+                             'BOUNDS', 'ENDATA', 'OBJSENSE'):
                     section = token
                     continue
                 # Unknown section header — skip
@@ -366,6 +374,13 @@ class FileParser:
 
                 elif section == 'RANGES':
                     pass  # RANGES section — not commonly needed
+                
+                elif section == 'OBJSENSE':
+                    sense_token = fields[0].upper()
+                    if sense_token in ('MAX', 'MAXIMIZE'):
+                        objective_sense = 'maximize'
+                    elif sense_token in ('MIN', 'MINIMIZE'):
+                        objective_sense = 'minimize'
 
             except Exception as exc:
                 warnings.warn(
@@ -457,7 +472,7 @@ class FileParser:
             if type_desc else f"Variables: {n_vars}"
         )
         parts.append(f"Constraints: {n_cons}")
-        parts.append(f"Objective: minimize {objective_name or '?'}")
+        parts.append(f"Objective: {objective_sense} {objective_name or '?'}")
 
         if obj_coefficients:
             top_obj = list(obj_coefficients.items())[:10]
@@ -478,7 +493,7 @@ class FileParser:
             'type': 'mps',
             'name': problem_name,
             'objective_name': objective_name,
-            'objective_sense': 'minimize',
+            'objective_sense': objective_sense,  # FIX: respects OBJSENSE section
             'variables': all_vars,
             'variable_bounds': variable_bounds,
             'constraints': constraint_list,

@@ -362,6 +362,12 @@ Rules:
 - "constraints": list every constraint with name, a mathematical expression, and sense
   (sense must be "<=", ">=", or "=").
 - "parameters": all extracted numerical data as proper JSON types (numbers, arrays, matrices).
+  For knapsack problems:
+  * Use "capacity" or "budget" for the weight/capacity limit
+  * Use "weights" or "costs" for item weights/costs
+  * Use "values" or "returns" for item values/profits
+  * Use "item_names" or "project_names" for item identifiers
+  * For investment knapsack: prefer "budget", "costs", "returns", "project_names"
 - "assumptions": one entry per inference you made about data NOT explicitly stated.
   Each needs: assumption (string), confidence (0.0–1.0), impact ("high"/"medium"/"low"),
   and field (the JSON key path this assumption affects, e.g. "parameters.demand").

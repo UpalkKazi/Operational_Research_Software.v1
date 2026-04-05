@@ -104,6 +104,28 @@ class ResultInterpreter:
         problem_data: Dict[str, Any],
     ) -> str:
         top_vars = self._top_nonzero(solution.get('variables', {}))
+        
+        # For knapsack problems, enhance variable names with actual item names
+        if problem_data.get('problem_type') == 'knapsack':
+            params = problem_data.get('parameters', {})
+            item_names = params.get('item_names') or params.get('project_names')
+            if item_names:
+                enhanced_vars = {}
+                for var_name, value in top_vars.items():
+                    # Extract index from variable name (e.g., 'item_0' -> 0)
+                    try:
+                        if var_name.startswith('item_'):
+                            idx = int(var_name.split('_')[1])
+                            if 0 <= idx < len(item_names):
+                                enhanced_vars[f"{var_name} ({item_names[idx]})"] = value
+                            else:
+                                enhanced_vars[var_name] = value
+                        else:
+                            enhanced_vars[var_name] = value
+                    except (ValueError, IndexError):
+                        enhanced_vars[var_name] = value
+                top_vars = enhanced_vars
+        
         vars_json = json.dumps(top_vars, indent=2, default=str)
 
         return (
@@ -152,6 +174,28 @@ class ResultInterpreter:
         )
 
         variables = solution.get('variables', {})
+        
+        # For knapsack problems, enhance variable names with actual item names
+        if problem_data.get('problem_type') == 'knapsack':
+            params = problem_data.get('parameters', {})
+            item_names = params.get('item_names') or params.get('project_names')
+            if item_names:
+                enhanced_vars = {}
+                for var_name, value in variables.items():
+                    if value is not None and abs(value) > 1e-8:
+                        try:
+                            if var_name.startswith('item_'):
+                                idx = int(var_name.split('_')[1])
+                                if 0 <= idx < len(item_names):
+                                    enhanced_vars[f"{var_name} ({item_names[idx]})"] = value
+                                else:
+                                    enhanced_vars[var_name] = value
+                            else:
+                                enhanced_vars[var_name] = value
+                        except (ValueError, IndexError):
+                            enhanced_vars[var_name] = value
+                variables = enhanced_vars
+        
         sorted_vars = sorted(
             ((k, v) for k, v in variables.items()
              if v is not None and abs(v) > 1e-8),
@@ -230,6 +274,27 @@ class ResultInterpreter:
             k: v for k, v in solution.get('variables', {}).items()
             if v is not None and abs(v) > 1e-8
         }
+        
+        # For knapsack problems, enhance variable names with actual item names
+        if problem_data.get('problem_type') == 'knapsack':
+            params = problem_data.get('parameters', {})
+            item_names = params.get('item_names') or params.get('project_names')
+            if item_names:
+                enhanced_top = {}
+                for var_name, value in top.items():
+                    try:
+                        if var_name.startswith('item_'):
+                            idx = int(var_name.split('_')[1])
+                            if 0 <= idx < len(item_names):
+                                enhanced_top[f"{var_name} ({item_names[idx]})"] = value
+                            else:
+                                enhanced_top[var_name] = value
+                        else:
+                            enhanced_top[var_name] = value
+                    except (ValueError, IndexError):
+                        enhanced_top[var_name] = value
+                top = enhanced_top
+        
         if top:
             lines += ["", "## Decision Variables (non-zero)"]
             for name, val in list(top.items())[:20]:

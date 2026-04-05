@@ -188,6 +188,22 @@ class SolverInterface:
         
         return result
 
+    def _get_adaptive_timeout(
+        self,
+        user_timeout: Optional[int],
+        num_variables: int = 0,
+        num_constraints: int = 0,
+    ) -> int:
+        """Return timeout in seconds. Respects user override; otherwise scales with problem size."""
+        if user_timeout is not None and user_timeout > 0:
+            return user_timeout
+        if num_variables > 20_000 or num_constraints > 20_000:
+            return 300
+        elif num_variables > 5_000 or num_constraints > 5_000:
+            return 180
+        else:
+            return 120
+
     def solve(
         self,
         model,
@@ -234,6 +250,11 @@ class SolverInterface:
         # Update solver type
         self.solver_type = resolved_key
         self.resolved_explanation = ""  # No longer needed since app.py handles this
+
+        # Adaptive timeout: respect user override, otherwise scale with problem size
+        _n_vars = self.problem_data.get('num_variables', 0) or 0
+        _n_cons = self.problem_data.get('num_constraints', 0) or 0
+        _timeout = self._get_adaptive_timeout(max_time, _n_vars, _n_cons)
         
         # Route to appropriate solver
         # Fast-path: SCIP selected + we have an MPS file → use PySCIPOpt directly.
@@ -241,15 +262,15 @@ class SolverInterface:
         if resolved_key == 'cvxpy_scip':
             mps_path = self.problem_data.get('mps_file_path')
             if mps_path:
-                direct_result = self._solve_with_pyscipopt(mps_path, max_time=max_time or 60)
+                direct_result = self._solve_with_pyscipopt(mps_path, max_time=_timeout)
                 if direct_result is not None:
                     return direct_result
 
         if resolved_key.startswith('cvxpy_') or self.solver_type == 'cvxpy':
-            return self._solve_with_cvxpy(model, max_time=max_time or 60)
+            return self._solve_with_cvxpy(model, max_time=_timeout)
 
         if isinstance(model, dict) and model.get('type') == 'cvxpy':
-            return self._solve_with_cvxpy(model, max_time=max_time or 60)
+            return self._solve_with_cvxpy(model, max_time=_timeout)
 
         if model is None or not isinstance(model, pulp.LpProblem):
             return self._empty_result(
@@ -259,8 +280,8 @@ class SolverInterface:
         start_time = time.time()
 
         try:
-            if max_time and hasattr(self.solver, 'timeLimit'):
-                self.solver.timeLimit = max_time
+            if _timeout and hasattr(self.solver, 'timeLimit'):
+                self.solver.timeLimit = _timeout
 
             model.solve(self.solver)
             solve_time = round(time.time() - start_time, 4)

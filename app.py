@@ -317,7 +317,8 @@ with tab1:
             else:
                 _ptype_badge = "Linear Programming"
             st.markdown(f"**Problem type:** `{_ptype_badge}`")
-            st.markdown(f"**Objective:** minimize `{obj_name}`")
+            _miplib_obj_sense = parsed.get('objective_sense', 'minimize')
+            st.markdown(f"**Objective:** {_miplib_obj_sense} `{obj_name}`")
 
             # Try fetching known optimal value
             try:
@@ -331,8 +332,8 @@ with tab1:
             # Build a problem_data dict compatible with the rest of the pipeline
             problem_data = {
                 'problem_type': 'mixed_integer_programming' if (n_bin or n_int) else 'linear_programming',
-                'objective': 'minimize',
-                'objective_description': f'Minimize {obj_name} (MIPLIB benchmark)',
+                'objective': _miplib_obj_sense,
+                'objective_description': f'{_miplib_obj_sense.capitalize()} {obj_name} (MIPLIB benchmark)',
                 'decision_variables': [
                     {
                         'name': v,
@@ -388,12 +389,50 @@ with tab1:
                     st.error(f"❌ File parsing failed: {parsed.get('error')}")
                     st.stop()
 
-                extractor = DataExtractor()
-                problem_data = extractor.extract(
-                    parsed,
-                    user_hint=_file_hint,
-                    filename=_uploaded_file.name,
-                )
+                # MPS files are already fully parsed — bypass AI DataExtractor entirely.
+                # DataExtractor ignores structured MPS data and its defaults hardcode 'minimize'.
+                if parsed.get('type') == 'mps':
+                    n_vars = parsed.get('num_variables', 0)
+                    n_cons = parsed.get('num_constraints', 0)
+                    vbounds = parsed.get('variable_bounds', {})
+                    n_bin = sum(1 for vb in vbounds.values() if vb.get('type') == 'binary')
+                    n_int = sum(1 for vb in vbounds.values() if vb.get('type') == 'integer')
+                    _obj_sense = parsed.get('objective_sense', 'minimize')
+
+                    problem_data = {
+                        'problem_type': 'mixed_integer_programming' if (n_bin or n_int) else 'linear_programming',
+                        'objective': _obj_sense,
+                        'objective_description': (
+                            f"{_obj_sense.capitalize()} {parsed.get('objective_name', 'objective')} "
+                            f"(uploaded MPS)"
+                        ),
+                        'decision_variables': [
+                            {
+                                'name': v,
+                                'type': vbounds.get(v, {}).get('type', 'continuous'),
+                                'description': '',
+                            }
+                            for v in parsed.get('variables', [])[:50]
+                        ],
+                        'constraints': [],
+                        'parameters': {},
+                        'confidence': 1.0,
+                        'assumptions': [],
+                        'warnings': [],
+                        'notes': f'Uploaded MPS file: {_uploaded_file.name}',
+                        'source': 'mps_upload',
+                        'filename': _uploaded_file.name,
+                    }
+                    st.session_state.mps_parsed = parsed
+                    _mps_direct = True
+                else:
+                    extractor = DataExtractor()
+                    problem_data = extractor.extract(
+                        parsed,
+                        user_hint=_file_hint,
+                        filename=_uploaded_file.name,
+                    )
+
                 st.session_state.problem_data = problem_data
             except Exception as e:
                 s1.update(label="Step 1: File analysis failed", state="error")
@@ -406,6 +445,14 @@ with tab1:
             st.info(f"File analysed: **{_uploaded_file.name}** — detected **{ptype}**")
             st.markdown(f"**Objective:** `{problem_data.get('objective', '?')}`")
             st.markdown(f"**Confidence:** `{conf:.0%}`")
+
+            # Show rich metrics for MPS uploads just like MIPLIB path does
+            if _mps_direct:
+                mc1, mc2, mc3, mc4 = st.columns(4)
+                mc1.metric("Variables", f"{n_vars:,}")
+                mc2.metric("Constraints", f"{n_cons:,}")
+                mc3.metric("Binary", f"{n_bin:,}")
+                mc4.metric("Integer", f"{n_int - n_bin:,}")
 
             ds = problem_data.get('data_summary', {})
             if ds:

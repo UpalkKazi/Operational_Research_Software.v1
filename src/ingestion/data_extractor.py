@@ -20,7 +20,7 @@ class DataExtractor:
 
     _CLASSIFIER_DEFAULTS: Dict[str, Any] = {
         "problem_type": "unknown",
-        "objective": "minimize",
+        "objective": None,  # None means AI didn't specify — caller should not assume minimize
         "objective_description": "",
         "decision_variables": [],
         "constraints": [],
@@ -409,6 +409,12 @@ class DataExtractor:
         for key, value in ai_result.items():
             if value is not None:
                 merged[key] = value
+        # If objective still None after merge, default to minimize with a warning
+        if not merged.get('objective'):
+            merged['objective'] = 'minimize'
+            merged.setdefault('warnings', []).append(
+                'Objective sense not detected — defaulted to minimize.'
+            )
         return merged
 
     def _error_result(
@@ -417,6 +423,7 @@ class DataExtractor:
         filename: str,
     ) -> Dict[str, Any]:
         result = dict(self._CLASSIFIER_DEFAULTS)
+        result['objective'] = 'minimize'  # safe default for error paths
         result.update({
             'source': 'file_upload',
             'filename': filename,
