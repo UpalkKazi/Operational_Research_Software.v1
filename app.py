@@ -5,6 +5,7 @@ AI-Powered Operations Research Tool
 
 import streamlit as st
 from dotenv import load_dotenv
+from copy import deepcopy
 import os
 import re as _re
 
@@ -138,7 +139,10 @@ with st.sidebar:
         st.rerun()
 
 # Main content area
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["💡 Solve Problem", "📊 Results", "📈 Visualization", "🗄️ MIPLIB Cache", "📖 Help"])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    "💡 Solve Problem", "📊 Results", "📈 Visualization",
+    "🧮 Model Playground", "🗄️ MIPLIB Cache", "📖 Help"
+])
 
 with tab1:
     st.header("Describe Your Problem")
@@ -801,6 +805,14 @@ with tab1:
             s4.update(label="Step 4 Done: Interpretation ready", state="complete")
 
         st.session_state.solution_ready = True
+
+        if 'playground_original_state' not in st.session_state:
+            _m = st.session_state.get('model')
+            if _m is not None and hasattr(_m, 'variables'):
+                from src.utils.model_editor import pulp_to_editor_state
+                st.session_state.playground_original_state = pulp_to_editor_state(_m)
+                st.session_state.playground_original_solution = deepcopy(solution)
+
         st.balloons()
 
 with tab2:
@@ -1115,7 +1127,513 @@ with tab3:
         else:
             st.warning('Could not generate this chart. Try a different chart type.')
 
+# =====================================================================
+#  TAB 4 — Model Playground
+# =====================================================================
 with tab4:
+    st.header("🧮 Model Playground")
+
+    from src.utils.model_editor import (
+        pulp_to_editor_state,
+        editor_state_to_pulp,
+        diff_states,
+        get_or_template,
+        latex_expr_to_coefficients,
+        parse_constraint_latex,
+    )
+    from src.ui.mathlive_component import mathlive_editor
+
+    # ------------------------------------------------------------------
+    #  Guard clause — no model solved yet
+    # ------------------------------------------------------------------
+    if 'playground_original_state' not in st.session_state:
+        st.info(
+            "**No model loaded yet.** Solve a problem in the *Solve Problem* tab first, "
+            "or pick a template below to start from scratch."
+        )
+        st.markdown("#### Quick-start Templates")
+        _tpl_cols = st.columns(5)
+        _tpl_names = [
+            ("Linear Program", "lp"),
+            ("Integer Program", "ip"),
+            ("Transportation", "transportation"),
+            ("Knapsack", "knapsack"),
+            ("Assignment", "assignment"),
+        ]
+        for _col, (_label, _tkey) in zip(_tpl_cols, _tpl_names):
+            with _col:
+                if st.button(_label, key=f"tpl_{_tkey}", use_container_width=True):
+                    st.session_state.playground_original_state = get_or_template(_tkey)
+                    st.session_state.playground_original_solution = None
+                    st.rerun()
+
+        st.stop()
+
+    # ------------------------------------------------------------------
+    #  Initialise playground editor state from original if not yet done
+    # ------------------------------------------------------------------
+    if 'playground_editor_state' not in st.session_state:
+        st.session_state.playground_editor_state = deepcopy(
+            st.session_state.playground_original_state
+        )
+
+    _pg_orig = st.session_state.playground_original_state
+    _pg_edit = st.session_state.playground_editor_state
+
+    # ------------------------------------------------------------------
+    #  Sub-tabs
+    # ------------------------------------------------------------------
+    pg_tab1, pg_tab2, pg_tab3 = st.tabs([
+        "📄 Model View", "✏️ Live Editor", "📊 Sensitivity Sweep"
+    ])
+
+    # ==================================================================
+    #  Sub-tab 1: Model View (read-only rendered LaTeX)
+    # ==================================================================
+    with pg_tab1:
+        st.subheader("Current Mathematical Model")
+        _sense_label = _pg_orig.get('sense', 'minimize').capitalize()
+        st.markdown(f"**Objective ({_sense_label}):**")
+        st.latex(_pg_orig.get('objective_latex', ''))
+
+        if _pg_orig.get('constraints'):
+            st.markdown("**Subject to:**")
+            for _ci, _con in enumerate(_pg_orig['constraints']):
+                st.latex(_con.get('latex', ''))
+
+        if _pg_orig.get('variables'):
+            st.markdown("**Decision Variables:**")
+            _var_rows = []
+            for _v in _pg_orig['variables']:
+                _lb = _v.get('lb', 0) if _v.get('lb') is not None else '-∞'
+                _ub = _v.get('ub') if _v.get('ub') is not None else '+∞'
+                _var_rows.append({
+                    'Variable': _v['name'],
+                    'LaTeX': f"${_v.get('sympy_name', _v['name'])}$",
+                    'Type': _v.get('cat', 'Continuous'),
+                    'Lower Bound': _lb,
+                    'Upper Bound': _ub,
+                })
+            st.dataframe(pd.DataFrame(_var_rows), use_container_width=True, hide_index=True)
+
+        # Show current solution values if available
+        _orig_sol = st.session_state.get('playground_original_solution')
+        if _orig_sol and _orig_sol.get('variable_values'):
+            st.markdown("**Current Solution:**")
+            _sol_rows = []
+            for _vname, _vval in _orig_sol['variable_values'].items():
+                _sol_rows.append({'Variable': _vname, 'Value': _vval})
+            st.dataframe(pd.DataFrame(_sol_rows), use_container_width=True, hide_index=True)
+            _obj_val = _orig_sol.get('objective_value')
+            if _obj_val is not None:
+                st.metric("Objective Value", f"{_obj_val:,.4f}")
+
+    # ==================================================================
+    #  Sub-tab 2: Live Editor
+    # ==================================================================
+    with pg_tab2:
+        st.subheader("Edit Model")
+        st.caption(
+            "Modify the objective, constraints, and variables below. "
+            "Use the math toolbar to insert symbols, or type LaTeX directly."
+        )
+
+        # -- Objective --------------------------------------------------
+        st.markdown("---")
+        st.markdown("#### Objective Function")
+        _sense_options = ['minimize', 'maximize']
+        _sense_idx = _sense_options.index(_pg_edit.get('sense', 'minimize'))
+        _new_sense = st.selectbox(
+            "Direction", _sense_options, index=_sense_idx, key="pg_sense_select"
+        )
+        _pg_edit['sense'] = _new_sense
+
+        _obj_input = mathlive_editor(
+            label="Objective Expression",
+            initial_latex=_pg_edit.get('objective_latex', ''),
+            height=180,
+            key="pg_obj",
+            toolbar_mode='or_full',
+        )
+        if _obj_input:
+            _pg_edit['objective_latex'] = _obj_input
+
+        # -- Constraints ------------------------------------------------
+        st.markdown("---")
+        st.markdown("#### Constraints")
+
+        _constraints_to_remove = []
+        for _ci, _con in enumerate(_pg_edit.get('constraints', [])):
+            with st.expander(f"Constraint: {_con.get('name', f'C{_ci+1}')}", expanded=False):
+                _cname = st.text_input(
+                    "Name", value=_con.get('name', f'constraint_{_ci}'),
+                    key=f"pg_con_name_{_ci}",
+                )
+                _con['name'] = _cname
+
+                _con_edited = mathlive_editor(
+                    label=f"Constraint {_ci + 1}",
+                    initial_latex=_con.get('latex', ''),
+                    height=160,
+                    key=f"pg_con_{_ci}",
+                    toolbar_mode='minimal',
+                )
+                if _con_edited and _con_edited != _con.get('latex', ''):
+                    _con['latex'] = _con_edited
+                    parsed_con = parse_constraint_latex(_con_edited)
+                    _con['sense'] = parsed_con['sense']
+                    if parsed_con.get('rhs_latex'):
+                        from src.utils.model_editor import _parse_rhs_value
+                        _parsed_rhs = _parse_rhs_value(parsed_con['rhs_latex'])
+                        if _parsed_rhs is not None:
+                            _con['rhs'] = _parsed_rhs
+                            st.session_state[f"pg_con_rhs_{_ci}"] = float(_parsed_rhs)
+
+                _rhs_val = st.number_input(
+                    "Constraint limit (RHS)",
+                    value=float(_con.get('rhs', 0)),
+                    key=f"pg_con_rhs_{_ci}", step=1.0,
+                )
+                _con['rhs'] = _rhs_val
+
+                if st.button("🗑️ Remove", key=f"pg_con_del_{_ci}"):
+                    _constraints_to_remove.append(_ci)
+
+        for _idx in reversed(_constraints_to_remove):
+            _pg_edit['constraints'].pop(_idx)
+        if _constraints_to_remove:
+            st.rerun()
+
+        with st.expander("➕ Add New Constraint"):
+            _new_con_name = st.text_input(
+                "Constraint name", value=f"new_constraint_{len(_pg_edit.get('constraints', []))+1}",
+                key="pg_new_con_name",
+            )
+            _new_con_latex = mathlive_editor(
+                label="New constraint expression",
+                initial_latex=r"x_{1} + x_{2} \leq 100",
+                height=140,
+                key="pg_new_con_editor",
+                toolbar_mode='minimal',
+            )
+            _new_con_rhs = st.number_input(
+                "Constraint limit (RHS)", value=100.0, key="pg_new_con_rhs", step=1.0,
+            )
+            if st.button("Add Constraint", key="pg_add_con"):
+                _latex = _new_con_latex or r"x_{1} \leq 100"
+                _pg_edit.setdefault('constraints', []).append({
+                    'name': _new_con_name,
+                    'latex': _latex,
+                    'sense': parse_constraint_latex(_latex).get('sense', '<='),
+                    'rhs': _new_con_rhs,
+                })
+                st.rerun()
+
+        # -- Variables ---------------------------------------------------
+        st.markdown("---")
+        st.markdown("#### Variables")
+
+        _vars_to_remove = []
+        for _vi, _vinfo in enumerate(_pg_edit.get('variables', [])):
+            _vcols = st.columns([2, 2, 1, 1, 1, 0.5])
+            with _vcols[0]:
+                st.text_input(
+                    "Name", value=_vinfo['name'],
+                    key=f"pg_var_name_{_vi}", disabled=True,
+                )
+            with _vcols[1]:
+                st.text(f"${_vinfo.get('sympy_name', '')}$")
+            with _vcols[2]:
+                _cat_options = ['Continuous', 'Integer', 'Binary']
+                _cat_idx = _cat_options.index(_vinfo.get('cat', 'Continuous')) if _vinfo.get('cat') in _cat_options else 0
+                _new_cat = st.selectbox(
+                    "Type", _cat_options, index=_cat_idx, key=f"pg_var_cat_{_vi}",
+                )
+                _vinfo['cat'] = _new_cat
+            with _vcols[3]:
+                _new_lb = st.number_input(
+                    "LB", value=float(_vinfo.get('lb', 0) or 0),
+                    key=f"pg_var_lb_{_vi}", step=1.0,
+                )
+                _vinfo['lb'] = _new_lb
+            with _vcols[4]:
+                # ISSUE 4 FIX: Show 0.0 for unbounded, with caption explaining
+                _ub_val = _vinfo.get('ub')
+                _is_unbounded = _ub_val is None or _ub_val >= 999999
+                _new_ub = st.number_input(
+                    "UB", value=0.0 if _is_unbounded else float(_ub_val),
+                    key=f"pg_var_ub_{_vi}", step=1.0,
+                )
+                if _is_unbounded:
+                    st.caption("0 = no upper bound (∞)")
+                _vinfo['ub'] = None if _new_ub == 0 else _new_ub
+            with _vcols[5]:
+                if st.button("🗑️", key=f"pg_var_del_{_vi}"):
+                    _vars_to_remove.append(_vi)
+
+        for _idx in reversed(_vars_to_remove):
+            _pg_edit['variables'].pop(_idx)
+        if _vars_to_remove:
+            st.rerun()
+
+        with st.expander("➕ Add New Variable"):
+            _nv_cols = st.columns(4)
+            with _nv_cols[0]:
+                _nv_name = st.text_input("Name", value="x_new", key="pg_new_var_name")
+            with _nv_cols[1]:
+                _nv_cat = st.selectbox("Type", ['Continuous', 'Integer', 'Binary'], key="pg_new_var_cat")
+            with _nv_cols[2]:
+                _nv_lb = st.number_input("Lower bound", value=0.0, key="pg_new_var_lb", step=1.0)
+            with _nv_cols[3]:
+                _nv_ub = st.number_input("Upper bound", value=1e6, key="pg_new_var_ub", step=1.0)
+            if st.button("Add Variable", key="pg_add_var"):
+                from src.utils.model_editor import _pulp_var_to_sympy_name
+                _pg_edit.setdefault('variables', []).append({
+                    'name': _nv_name,
+                    'sympy_name': _pulp_var_to_sympy_name(_nv_name),
+                    'lb': _nv_lb,
+                    'ub': _nv_ub if _nv_ub < 1e6 else None,
+                    'cat': _nv_cat,
+                })
+                st.rerun()
+
+        # -- Action buttons ---------------------------------------------
+        st.markdown("---")
+        _act_cols = st.columns(3)
+        with _act_cols[0]:
+            _solve_edited = st.button(
+                "🚀 Solve Edited Model", type="primary", key="pg_solve",
+                use_container_width=True,
+            )
+        with _act_cols[1]:
+            if st.button("👁️ Preview as LaTeX", key="pg_preview", use_container_width=True):
+                st.markdown("**Objective:**")
+                st.latex(_pg_edit.get('objective_latex', ''))
+                for _con in _pg_edit.get('constraints', []):
+                    st.latex(_con.get('latex', ''))
+        with _act_cols[2]:
+            if st.button("🔄 Reset to Original", key="pg_reset", use_container_width=True):
+                st.session_state.playground_editor_state = deepcopy(
+                    st.session_state.playground_original_state
+                )
+                if 'playground_edited_solution' in st.session_state:
+                    del st.session_state['playground_edited_solution']
+                st.rerun()
+
+        # -- Solve edited model -----------------------------------------
+        if _solve_edited:
+            with st.spinner("Building and solving edited model..."):
+                try:
+                    _edited_model, _build_warnings = editor_state_to_pulp(_pg_edit)
+
+                    if _build_warnings:
+                        for _w in _build_warnings:
+                            st.warning(f"⚠️ {_w}")
+
+                    _pg_problem_data = st.session_state.get('problem_data', {})
+                    _solver_type = st.session_state.get('solver_key', 'auto')
+                    _max_time = st.session_state.get('max_time', 120)
+
+                    _pg_solver = SolverInterface(
+                        solver_type=_solver_type,
+                        problem_data=_pg_problem_data,
+                    )
+                    _edited_solution = _pg_solver.solve(_edited_model, max_time=_max_time)
+                    st.session_state.playground_edited_solution = _edited_solution
+
+                except Exception as e:
+                    st.error(f"Failed to solve edited model: {e}")
+                    _edited_solution = None
+
+        # -- Comparison table -------------------------------------------
+        _edited_sol = st.session_state.get('playground_edited_solution')
+        if _edited_sol:
+            st.markdown("---")
+            st.subheader("📊 Comparison: Original vs Edited")
+
+            _changes = diff_states(_pg_orig, _pg_edit)
+
+            _orig_sol = st.session_state.get('playground_original_solution', {})
+            _orig_obj = _orig_sol.get('objective_value') if _orig_sol else None
+            _edit_obj = _edited_sol.get('objective_value')
+
+            _cmp_cols = st.columns(3)
+            with _cmp_cols[0]:
+                _orig_display = f"{_orig_obj:,.4f}" if _orig_obj is not None else "N/A"
+                st.metric("Original Objective", _orig_display)
+            with _cmp_cols[1]:
+                _edit_display = f"{_edit_obj:,.4f}" if _edit_obj is not None else "N/A"
+                st.metric("Edited Objective", _edit_display)
+            with _cmp_cols[2]:
+                if _orig_obj is not None and _edit_obj is not None:
+                    _delta = _edit_obj - _orig_obj
+                    _pct = (_delta / abs(_orig_obj) * 100) if _orig_obj != 0 else 0
+                    st.metric("Delta", f"{_delta:,.4f}", f"{_pct:+.1f}%")
+                else:
+                    st.metric("Delta", "N/A")
+
+            if _changes and _changes != ["No changes detected"]:
+                st.markdown("**Changes Made:**")
+                for _ch in _changes:
+                    st.markdown(f"- {_ch}")
+
+            # Variable comparison
+            _orig_vals = _orig_sol.get('variable_values', {}) if _orig_sol else {}
+            _edit_vals = _edited_sol.get('variable_values', {})
+            if _orig_vals or _edit_vals:
+                _all_vars = sorted(set(list(_orig_vals.keys()) + list(_edit_vals.keys())))
+                _cmp_rows = []
+                for _vn in _all_vars:
+                    _ov = _orig_vals.get(_vn)
+                    _ev = _edit_vals.get(_vn)
+                    _cmp_rows.append({
+                        'Variable': _vn,
+                        'Original': f"{_ov:.4f}" if _ov is not None else "—",
+                        'Edited': f"{_ev:.4f}" if _ev is not None else "—",
+                        'Delta': f"{_ev - _ov:+.4f}" if (_ov is not None and _ev is not None) else "—",
+                    })
+                st.dataframe(
+                    pd.DataFrame(_cmp_rows),
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+    # ==================================================================
+    #  Sub-tab 3: Sensitivity Sweep
+    # ==================================================================
+    with pg_tab3:
+        st.subheader("Constraint RHS Sensitivity Sweep")
+        st.caption(
+            "Pick a constraint, sweep its RHS across a range, and observe "
+            "how the optimal objective changes. The slope of the line "
+            "approximates the **average marginal value** (for integer models "
+            "this is an approximation, not a true shadow price)."
+        )
+
+        _cons = _pg_edit.get('constraints', [])
+        if not _cons:
+            st.warning("No constraints in the current model.")
+            st.stop()
+
+        _con_names = [c.get('name', f'C{i+1}') for i, c in enumerate(_cons)]
+        
+        # ISSUE 5 FIX: Use session state to update defaults when constraint changes
+        def _on_constraint_change():
+            _sel_idx = _con_names.index(st.session_state.pg_sweep_con)
+            _current_rhs = _cons[_sel_idx].get('rhs', 0)
+            st.session_state.pg_sweep_min_default = float(max(0, _current_rhs * 0.2))
+            st.session_state.pg_sweep_max_default = float(_current_rhs * 2.5) if _current_rhs else 100.0
+        
+        _selected_con = st.selectbox(
+            "Select constraint", _con_names, key="pg_sweep_con", 
+            on_change=_on_constraint_change
+        )
+        _sel_idx = _con_names.index(_selected_con)
+        _current_rhs = _cons[_sel_idx].get('rhs', 0)
+        
+        # Initialize defaults if not set
+        if 'pg_sweep_min_default' not in st.session_state:
+            st.session_state.pg_sweep_min_default = float(max(0, _current_rhs * 0.2))
+            st.session_state.pg_sweep_max_default = float(_current_rhs * 2.5) if _current_rhs else 100.0
+
+        _sw_cols = st.columns(3)
+        with _sw_cols[0]:
+            _rhs_min = st.number_input(
+                "RHS Min", value=st.session_state.pg_sweep_min_default,
+                key="pg_sweep_min", step=1.0,
+            )
+        with _sw_cols[1]:
+            _rhs_max = st.number_input(
+                "RHS Max", value=st.session_state.pg_sweep_max_default,
+                key="pg_sweep_max", step=1.0,
+            )
+        with _sw_cols[2]:
+            _n_points = st.number_input(
+                "Number of points", value=10, min_value=3, max_value=50,
+                key="pg_sweep_n", step=1,
+            )
+
+        if st.button("🔍 Run Sweep", type="primary", key="pg_run_sweep"):
+            import numpy as np
+
+            _sweep_cache_key = f"sweep_{_selected_con}_{_rhs_min}_{_rhs_max}_{_n_points}"
+            _sweep_cache = st.session_state.get('_sweep_cache', {})
+
+            if _sweep_cache_key in _sweep_cache:
+                _rhs_vals, _obj_vals = _sweep_cache[_sweep_cache_key]
+            else:
+                _rhs_vals = np.linspace(_rhs_min, _rhs_max, int(_n_points)).tolist()
+                _obj_vals = []
+                _progress = st.progress(0, text="Sweeping...")
+
+                for _pi, _rv in enumerate(_rhs_vals):
+                    _sweep_state = deepcopy(_pg_edit)
+                    _sweep_state['constraints'][_sel_idx]['rhs'] = _rv
+
+                    try:
+                        _sweep_model, _ = editor_state_to_pulp(_sweep_state)
+                        _pg_problem_data = st.session_state.get('problem_data', {})
+                        _sw_solver = SolverInterface(
+                            solver_type=st.session_state.get('solver_key', 'auto'),
+                            problem_data=_pg_problem_data,
+                        )
+                        _sw_sol = _sw_solver.solve(_sweep_model, max_time=30)
+                        _ov = _sw_sol.get('objective_value')
+                        _obj_vals.append(_ov if _ov is not None else float('nan'))
+                    except Exception:
+                        _obj_vals.append(float('nan'))
+
+                    _progress.progress(
+                        (_pi + 1) / len(_rhs_vals),
+                        text=f"Solving {_pi+1}/{len(_rhs_vals)}...",
+                    )
+                _progress.empty()
+
+                # Cache (limit to 150 entries)
+                if len(_sweep_cache) >= 150:
+                    _oldest = next(iter(_sweep_cache))
+                    del _sweep_cache[_oldest]
+                _sweep_cache[_sweep_cache_key] = (_rhs_vals, _obj_vals)
+                st.session_state['_sweep_cache'] = _sweep_cache
+
+            # Plot
+            _sweep_df = pd.DataFrame({
+                'RHS Value': _rhs_vals,
+                'Objective': _obj_vals,
+            })
+            _fig = px.line(
+                _sweep_df, x='RHS Value', y='Objective',
+                title=f"Sensitivity: {_selected_con} RHS vs Objective",
+                markers=True,
+            )
+            _fig.add_vline(
+                x=_current_rhs, line_dash="dash", line_color="red",
+                annotation_text=f"Current: {_current_rhs}",
+            )
+            st.plotly_chart(_fig, use_container_width=True)
+
+            # Shadow price approximation
+            import numpy as np
+            _valid = [
+                (r, o) for r, o in zip(_rhs_vals, _obj_vals)
+                if o is not None and not (isinstance(o, float) and np.isnan(o))
+            ]
+            if len(_valid) >= 2:
+                _r_arr = [v[0] for v in _valid]
+                _o_arr = [v[1] for v in _valid]
+                _slope = (
+                    (_o_arr[-1] - _o_arr[0]) / (_r_arr[-1] - _r_arr[0])
+                    if (_r_arr[-1] - _r_arr[0]) != 0 else 0
+                )
+                st.metric(
+                    "Average Marginal Value",
+                    f"{_slope:,.4f}",
+                    help="Average change in objective per unit change in constraint RHS. Note: For integer/binary models, the actual marginal value is step-wise, not continuous.",
+                )
+            else:
+                st.info("Not enough feasible points to compute a shadow price.")
+
+with tab5:
     st.header("🗄️ MIPLIB Cache")
     
     from src.storage.miplib_cache import MIPLIBCache
@@ -1197,7 +1715,7 @@ with tab4:
     else:
         st.info("No cached MIPLIB instances yet. Solve a MIPLIB problem to see cached results here.")
 
-with tab5:
+with tab6:
     st.header("How to Use OR Assistant")
 
     st.markdown("""

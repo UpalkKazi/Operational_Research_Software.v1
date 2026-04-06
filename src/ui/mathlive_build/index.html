@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://unpkg.com/mathlive@0.98.6/dist/mathlive.min.js"></script>
+  <style>
+    body { margin: 0; padding: 8px; font-family: sans-serif; background: transparent; }
+    .label { font-size: 13px; color: #888; margin-bottom: 4px; }
+    math-field {
+      width: 100%;
+      min-height: 50px;
+      font-size: 20px;
+      border: 2px solid #1f77b4;
+      border-radius: 6px;
+      padding: 8px;
+      background: #fafafa;
+      color: #222;
+    }
+    math-field:focus-within {
+      border-color: #ff6b35;
+      box-shadow: 0 0 0 3px rgba(255,107,53,0.2);
+    }
+    .or-toolbar {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      margin-bottom: 8px; padding: 6px;
+      background: #f0f4ff; border-radius: 6px;
+      border: 1px solid #d0d8ff;
+    }
+    .or-toolbar-section { display: flex; gap: 3px; align-items: center; }
+    .or-toolbar-divider { width: 1px; background: #ccc; margin: 0 4px; align-self: stretch; }
+    .tb-btn {
+      background: white; border: 1px solid #bbb; border-radius: 4px;
+      padding: 4px 8px; cursor: pointer; font-size: 14px;
+      transition: all 0.15s; min-width: 32px; text-align: center;
+    }
+    .tb-btn:hover { background: #1f77b4; color: white; border-color: #1f77b4; }
+    .output-box { font-size: 11px; color: #666; margin-top: 4px; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div class="label" id="label"></div>
+  <div id="toolbar-container"></div>
+  <math-field id="mf"></math-field>
+  <div class="output-box" id="out"></div>
+
+  <script>
+    // -- Minimal Streamlit Component Library (bi-directional) ----------------
+    ;(function () {
+      const Streamlit = {
+        RENDER_EVENT: "streamlit:render",
+        events: new EventTarget(),
+        setComponentReady: function () {
+          window.parent.postMessage(
+            { isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1 },
+            "*"
+          );
+        },
+        setComponentValue: function (value) {
+          window.parent.postMessage(
+            { isStreamlitMessage: true, type: "streamlit:setComponentValue", value: value },
+            "*"
+          );
+        },
+        setFrameHeight: function (height) {
+          window.parent.postMessage(
+            {
+              isStreamlitMessage: true,
+              type: "streamlit:setFrameHeight",
+              height: height !== undefined ? height : document.body.scrollHeight + 10,
+            },
+            "*"
+          );
+        },
+      };
+      window.addEventListener("message", function (event) {
+        if (event.data && event.data.type === "streamlit:render") {
+          Streamlit.events.dispatchEvent(
+            new CustomEvent(Streamlit.RENDER_EVENT, {
+              detail: {
+                args: event.data.args || {},
+                disabled: event.data.disabled || false,
+                theme: event.data.theme || {},
+              },
+            })
+          );
+        }
+      });
+      window.Streamlit = Streamlit;
+    })();
+
+    // -- Component logic -----------------------------------------------------
+    const mf = document.getElementById("mf");
+    const out = document.getElementById("out");
+    const labelEl = document.getElementById("label");
+    const toolbarContainer = document.getElementById("toolbar-container");
+
+    let _lastInitLatex = null;
+    let _toolbarBound = false;
+
+    function bindToolbarButtons() {
+      toolbarContainer.querySelectorAll("[data-cmd]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var cmd = JSON.parse(btn.dataset.cmd);
+          mf.executeCommand(cmd);
+          mf.focus();
+        });
+      });
+      _toolbarBound = true;
+    }
+
+    Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, function (event) {
+      var args = event.detail.args;
+
+      labelEl.textContent = args.label || "";
+
+      if (args.initial_latex !== undefined && args.initial_latex !== _lastInitLatex) {
+        mf.setValue(args.initial_latex || "");
+        out.textContent = "LaTeX: " + (args.initial_latex || "");
+        _lastInitLatex = args.initial_latex;
+      }
+
+      if (args.toolbar_html && !_toolbarBound) {
+        toolbarContainer.innerHTML = args.toolbar_html;
+        bindToolbarButtons();
+      }
+
+      if (args.read_only) {
+        mf.setAttribute("read-only", "");
+      } else {
+        mf.removeAttribute("read-only");
+      }
+
+      Streamlit.setFrameHeight(args.height || undefined);
+    });
+
+    // Debounced sync back to Python
+    var _debounce;
+    mf.addEventListener("input", function () {
+      var latex = mf.getValue("latex");
+      out.textContent = "LaTeX: " + latex;
+      clearTimeout(_debounce);
+      _debounce = setTimeout(function () {
+        Streamlit.setComponentValue(latex);
+      }, 350);
+    });
+
+    // Immediate sync on blur / commit
+    mf.addEventListener("change", function () {
+      clearTimeout(_debounce);
+      Streamlit.setComponentValue(mf.getValue("latex"));
+    });
+
+    Streamlit.setComponentReady();
+    Streamlit.setFrameHeight();
+  </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Investment Portfolio Optimization Example
+# Copy and paste this into the OR Assistant web interface at http://localhost:8501
+
+I need to optimize my investment portfolio with a budget of $1,000,000. 
+
+I have 5 investment opportunities:
+
+1. Tech Startup A: Costs $250,000, expected return $400,000
+2. Real Estate Project B: Costs $300,000, expected return $450,000  
+3. Green Energy Fund C: Costs $150,000, expected return $200,000
+4. Biotech Venture D: Costs $400,000, expected return $650,000
+5. Crypto Index Fund E: Costs $200,000, expected return $300,000
+
+I can only invest in each opportunity once (0-1 decision). What combination of investments should I choose to maximize my total expected returns while staying within my budget?
+
+Please solve this investment knapsack problem for me.
