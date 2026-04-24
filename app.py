@@ -48,6 +48,270 @@ st.markdown("""
         font-size: 1.2rem;
         color: #666;
     }
+
+    /* ================================================================
+       MODEL PLAYGROUND — Scoped via :has(.or-playground)
+       Frosted-glass cards, blue accent, clear elevation hierarchy
+       ================================================================ */
+
+    /* ── Entrance ── */
+    @keyframes orFadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    [role="tabpanel"]:has(.or-playground) > div {
+      animation: orFadeIn 250ms ease-out both;
+    }
+
+    /* ── Background gradient on the tab panel ── */
+    [role="tabpanel"]:has(.or-playground) {
+      background: linear-gradient(160deg, #161b2e 0%, #0f1219 60%, #141824 100%);
+      border-radius: 12px;
+      padding: 8px;
+    }
+
+    /* ── Typography ── */
+    [role="tabpanel"]:has(.or-playground) h1,
+    [role="tabpanel"]:has(.or-playground) h2,
+    [role="tabpanel"]:has(.or-playground) h3 {
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: #e8ecf4;
+    }
+    [role="tabpanel"]:has(.or-playground) h4 {
+      font-weight: 600;
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #60a5fa;
+      margin-bottom: 12px;
+    }
+
+    /* ── Dividers ── */
+    [role="tabpanel"]:has(.or-playground) hr {
+      border: none;
+      height: 1px;
+      margin: 24px 0;
+      background: linear-gradient(90deg,
+        transparent, rgba(255,255,255,0.1) 20%, rgba(255,255,255,0.1) 80%, transparent);
+    }
+
+    /* ── Sub-tab bar (Model View / Editor / Sweep) ── */
+    [role="tabpanel"]:has(.or-playground) [data-baseweb="tab-list"] {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      padding: 4px;
+      border: 1px solid rgba(255,255,255,0.08);
+      gap: 4px;
+      margin-bottom: 16px;
+    }
+    [role="tabpanel"]:has(.or-playground) [data-baseweb="tab"] {
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 8px;
+      color: #8896b0;
+      transition: all 200ms ease;
+    }
+    [role="tabpanel"]:has(.or-playground) [data-baseweb="tab"]:hover {
+      color: #c8d4e8;
+      background: rgba(255,255,255,0.04);
+    }
+    [role="tabpanel"]:has(.or-playground) [data-baseweb="tab"][aria-selected="true"] {
+      background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+      color: #fff !important;
+      box-shadow: 0 3px 12px rgba(59,130,246,0.35);
+    }
+
+    /* ── Buttons ── */
+    [role="tabpanel"]:has(.or-playground) .stButton > button,
+    [role="tabpanel"]:has(.or-playground) .stFormSubmitButton > button {
+      font-size: 0.875rem;
+      font-weight: 500;
+      padding: 10px 24px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.06);
+      color: #c8d4e8;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      backdrop-filter: blur(8px);
+      transition: all 180ms ease;
+    }
+    [role="tabpanel"]:has(.or-playground) .stButton > button:hover,
+    [role="tabpanel"]:has(.or-playground) .stFormSubmitButton > button:hover {
+      background: rgba(255,255,255,0.10);
+      border-color: rgba(255,255,255,0.18);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+      color: #fff;
+    }
+    /* Primary button — blue gradient */
+    [role="tabpanel"]:has(.or-playground) .stButton > button[kind="primary"],
+    [role="tabpanel"]:has(.or-playground) .stFormSubmitButton > button {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      border: none;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(59,130,246,0.4);
+    }
+    [role="tabpanel"]:has(.or-playground) .stButton > button[kind="primary"]:hover,
+    [role="tabpanel"]:has(.or-playground) .stFormSubmitButton > button:hover {
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+      box-shadow: 0 6px 22px rgba(59,130,246,0.5);
+      transform: translateY(-1px);
+    }
+    [role="tabpanel"]:has(.or-playground) .stButton > button:focus-visible {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.3);
+    }
+
+    /* ── Inputs (number, text, textarea) ── */
+    [role="tabpanel"]:has(.or-playground) [data-testid="stNumberInput"] input,
+    [role="tabpanel"]:has(.or-playground) [data-testid="stTextInput"] input,
+    [role="tabpanel"]:has(.or-playground) [data-testid="stTextArea"] textarea {
+      font-size: 0.9rem;
+      padding: 10px 14px !important;
+      border-radius: 10px !important;
+      border: 1px solid rgba(255,255,255,0.10) !important;
+      background: rgba(255,255,255,0.05) !important;
+      color: #e0e7f0 !important;
+      transition: all 180ms ease;
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stNumberInput"] input:focus,
+    [role="tabpanel"]:has(.or-playground) [data-testid="stTextInput"] input:focus {
+      border-color: #3b82f6 !important;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2), 0 2px 8px rgba(0,0,0,0.2) !important;
+      background: rgba(255,255,255,0.07) !important;
+    }
+    /* Input labels */
+    [role="tabpanel"]:has(.or-playground) [data-testid="stNumberInput"] label,
+    [role="tabpanel"]:has(.or-playground) [data-testid="stTextInput"] label,
+    [role="tabpanel"]:has(.or-playground) [data-testid="stSelectbox"] label {
+      font-size: 0.72rem !important;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: #64748b !important;
+    }
+    /* Number stepper +/– */
+    [role="tabpanel"]:has(.or-playground) [data-testid="stNumberInput"] button {
+      border-radius: 8px !important;
+      background: rgba(255,255,255,0.04) !important;
+      border: 1px solid rgba(255,255,255,0.08) !important;
+      color: #8896b0 !important;
+      transition: all 150ms ease;
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stNumberInput"] button:hover {
+      background: rgba(59,130,246,0.15) !important;
+      border-color: rgba(59,130,246,0.4) !important;
+      color: #60a5fa !important;
+    }
+
+    /* ── Selectbox ── */
+    [role="tabpanel"]:has(.or-playground) [data-testid="stSelectbox"] [data-baseweb="select"] > div {
+      border-radius: 10px !important;
+      border: 1px solid rgba(255,255,255,0.10) !important;
+      background: rgba(255,255,255,0.05) !important;
+      transition: all 180ms ease;
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stSelectbox"] [data-baseweb="select"]:focus-within > div {
+      border-color: #3b82f6 !important;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.2) !important;
+    }
+
+    /* ── Expanders — frosted glass cards ── */
+    [role="tabpanel"]:has(.or-playground) [data-testid="stExpander"] {
+      background: rgba(255,255,255,0.04);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+      transition: all 200ms ease;
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stExpander"]:hover {
+      border-color: rgba(255,255,255,0.14);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06);
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stExpander"] summary {
+      padding: 14px 18px;
+      font-weight: 500;
+      font-size: 0.92rem;
+      color: #d0d8e8;
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stExpander"] details[open] > summary {
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+      padding: 18px;
+    }
+
+    /* ── Forms — card treatment ── */
+    [role="tabpanel"]:has(.or-playground) [data-testid="stForm"] {
+      background: rgba(255,255,255,0.035);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 16px;
+      padding: 18px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+
+    /* ── Metrics — result cards ── */
+    [role="tabpanel"]:has(.or-playground) [data-testid="stMetric"] {
+      background: linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 18px 22px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
+      transition: all 200ms ease;
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stMetric"]:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.3);
+      border-color: rgba(255,255,255,0.14);
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stMetricLabel"] {
+      font-size: 0.7rem !important;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #64748b !important;
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stMetricValue"] {
+      font-size: 2rem !important;
+      font-weight: 700 !important;
+      letter-spacing: -0.02em;
+      color: #e8ecf4 !important;
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stMetricDelta"] {
+      font-size: 0.85rem !important;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 999px;
+      display: inline-block;
+      margin-top: 6px;
+    }
+
+    /* ── Data tables / Charts ── */
+    [role="tabpanel"]:has(.or-playground) [data-testid="stDataFrame"] {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    [role="tabpanel"]:has(.or-playground) [data-testid="stPlotlyChart"] {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+
+    /* ── Captions ── */
+    [role="tabpanel"]:has(.or-playground) [data-testid="stCaptionContainer"] {
+      font-size: 0.75rem !important;
+      color: #64748b !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1132,6 +1396,7 @@ with tab3:
 # =====================================================================
 with tab4:
     st.header("🧮 Model Playground")
+    st.markdown('<div class="or-playground"></div>', unsafe_allow_html=True)
 
     from src.utils.model_editor import (
         pulp_to_editor_state,
@@ -1289,12 +1554,17 @@ with tab4:
                             _con['rhs'] = _parsed_rhs
                             st.session_state[f"pg_con_rhs_{_ci}"] = float(_parsed_rhs)
 
-                _rhs_val = st.number_input(
-                    "Constraint limit (RHS)",
-                    value=float(_con.get('rhs', 0)),
-                    key=f"pg_con_rhs_{_ci}", step=1.0,
-                )
-                _con['rhs'] = _rhs_val
+                with st.form(key=f"pg_con_form_{_ci}", clear_on_submit=False):
+                    _form_rhs = st.number_input(
+                        "Constraint limit (RHS)",
+                        value=float(_con.get('rhs', 0)),
+                        key=f"pg_con_rhs_{_ci}", step=1.0,
+                    )
+                    _rhs_submitted = st.form_submit_button(
+                        "✅ Apply RHS Change", use_container_width=True,
+                    )
+                if _rhs_submitted:
+                    _con['rhs'] = _form_rhs
 
                 if st.button("🗑️ Remove", key=f"pg_con_del_{_ci}"):
                     _constraints_to_remove.append(_ci)
@@ -1333,43 +1603,63 @@ with tab4:
         st.markdown("---")
         st.markdown("#### Variables")
 
+        _vars_list = _pg_edit.get('variables', [])
         _vars_to_remove = []
-        for _vi, _vinfo in enumerate(_pg_edit.get('variables', [])):
-            _vcols = st.columns([2, 2, 1, 1, 1, 0.5])
-            with _vcols[0]:
-                st.text_input(
-                    "Name", value=_vinfo['name'],
-                    key=f"pg_var_name_{_vi}", disabled=True,
-                )
-            with _vcols[1]:
-                st.text(f"${_vinfo.get('sympy_name', '')}$")
-            with _vcols[2]:
-                _cat_options = ['Continuous', 'Integer', 'Binary']
-                _cat_idx = _cat_options.index(_vinfo.get('cat', 'Continuous')) if _vinfo.get('cat') in _cat_options else 0
-                _new_cat = st.selectbox(
-                    "Type", _cat_options, index=_cat_idx, key=f"pg_var_cat_{_vi}",
-                )
-                _vinfo['cat'] = _new_cat
-            with _vcols[3]:
-                _new_lb = st.number_input(
-                    "LB", value=float(_vinfo.get('lb', 0) or 0),
-                    key=f"pg_var_lb_{_vi}", step=1.0,
-                )
-                _vinfo['lb'] = _new_lb
-            with _vcols[4]:
-                # ISSUE 4 FIX: Show 0.0 for unbounded, with caption explaining
-                _ub_val = _vinfo.get('ub')
-                _is_unbounded = _ub_val is None or _ub_val >= 999999
-                _new_ub = st.number_input(
-                    "UB", value=0.0 if _is_unbounded else float(_ub_val),
-                    key=f"pg_var_ub_{_vi}", step=1.0,
-                )
-                if _is_unbounded:
-                    st.caption("0 = no upper bound (∞)")
-                _vinfo['ub'] = None if _new_ub == 0 else _new_ub
-            with _vcols[5]:
-                if st.button("🗑️", key=f"pg_var_del_{_vi}"):
-                    _vars_to_remove.append(_vi)
+
+        with st.form("pg_variables_form", clear_on_submit=False):
+            _form_var_edits = {}
+            for _vi, _vinfo in enumerate(_vars_list):
+                _vcols = st.columns([2, 2, 1, 1, 1])
+                with _vcols[0]:
+                    st.text_input(
+                        "Name", value=_vinfo['name'],
+                        key=f"pg_var_name_{_vi}", disabled=True,
+                    )
+                with _vcols[1]:
+                    st.text(f"${_vinfo.get('sympy_name', '')}$")
+                with _vcols[2]:
+                    _cat_options = ['Continuous', 'Integer', 'Binary']
+                    _cat_idx = _cat_options.index(_vinfo.get('cat', 'Continuous')) if _vinfo.get('cat') in _cat_options else 0
+                    _new_cat = st.selectbox(
+                        "Type", _cat_options, index=_cat_idx, key=f"pg_var_cat_{_vi}",
+                    )
+                with _vcols[3]:
+                    _new_lb = st.number_input(
+                        "LB", value=float(_vinfo.get('lb', 0) or 0),
+                        key=f"pg_var_lb_{_vi}", step=1.0,
+                    )
+                with _vcols[4]:
+                    _ub_val = _vinfo.get('ub')
+                    _is_unbounded = _ub_val is None or _ub_val >= 999999
+                    _new_ub = st.number_input(
+                        "UB", value=0.0 if _is_unbounded else float(_ub_val),
+                        key=f"pg_var_ub_{_vi}", step=1.0,
+                    )
+                    if _is_unbounded:
+                        st.caption("0 = no upper bound (∞)")
+                _form_var_edits[_vi] = {
+                    'cat': _new_cat, 'lb': _new_lb, 'ub_raw': _new_ub,
+                }
+
+            _vars_submitted = st.form_submit_button(
+                "✅ Apply Variable Changes", use_container_width=True,
+            )
+
+        if _vars_submitted:
+            for _vi, _edits in _form_var_edits.items():
+                if _vi < len(_vars_list):
+                    _vars_list[_vi]['cat'] = _edits['cat']
+                    _vars_list[_vi]['lb'] = _edits['lb']
+                    _vars_list[_vi]['ub'] = None if _edits['ub_raw'] == 0 else _edits['ub_raw']
+
+        if _vars_list:
+            st.caption("Remove a variable:")
+            _n_cols = max(1, min(len(_vars_list), 6))
+            _del_cols = st.columns(_n_cols)
+            for _vi, _vinfo in enumerate(_vars_list):
+                with _del_cols[_vi % _n_cols]:
+                    if st.button(f"🗑️ {_vinfo['name']}", key=f"pg_var_del_{_vi}"):
+                        _vars_to_remove.append(_vi)
 
         for _idx in reversed(_vars_to_remove):
             _pg_edit['variables'].pop(_idx)
@@ -1536,24 +1826,28 @@ with tab4:
             st.session_state.pg_sweep_min_default = float(max(0, _current_rhs * 0.2))
             st.session_state.pg_sweep_max_default = float(_current_rhs * 2.5) if _current_rhs else 100.0
 
-        _sw_cols = st.columns(3)
-        with _sw_cols[0]:
-            _rhs_min = st.number_input(
-                "RHS Min", value=st.session_state.pg_sweep_min_default,
-                key="pg_sweep_min", step=1.0,
-            )
-        with _sw_cols[1]:
-            _rhs_max = st.number_input(
-                "RHS Max", value=st.session_state.pg_sweep_max_default,
-                key="pg_sweep_max", step=1.0,
-            )
-        with _sw_cols[2]:
-            _n_points = st.number_input(
-                "Number of points", value=10, min_value=3, max_value=50,
-                key="pg_sweep_n", step=1,
+        with st.form("pg_sweep_form", clear_on_submit=False):
+            _sw_cols = st.columns(3)
+            with _sw_cols[0]:
+                _rhs_min = st.number_input(
+                    "RHS Min", value=st.session_state.pg_sweep_min_default,
+                    key="pg_sweep_min", step=1.0,
+                )
+            with _sw_cols[1]:
+                _rhs_max = st.number_input(
+                    "RHS Max", value=st.session_state.pg_sweep_max_default,
+                    key="pg_sweep_max", step=1.0,
+                )
+            with _sw_cols[2]:
+                _n_points = st.number_input(
+                    "Number of points", value=10, min_value=3, max_value=50,
+                    key="pg_sweep_n", step=1,
+                )
+            _sweep_submitted = st.form_submit_button(
+                "🔍 Run Sweep", type="primary", use_container_width=True,
             )
 
-        if st.button("🔍 Run Sweep", type="primary", key="pg_run_sweep"):
+        if _sweep_submitted:
             import numpy as np
 
             _sweep_cache_key = f"sweep_{_selected_con}_{_rhs_min}_{_rhs_max}_{_n_points}"

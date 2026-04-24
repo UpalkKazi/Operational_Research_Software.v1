@@ -12,6 +12,11 @@ An intelligent Streamlit application that helps users solve Operations Research 
 - **MIPLIB Integration**: Direct access to benchmark problems from MIPLIB
 - **Interactive Visualizations**: Charts and graphs to understand solutions
 - **Result Interpretation**: AI explains what the solution means in business terms
+- **🆕 Model Playground**: Interactive LaTeX equation editor to modify and experiment with OR models
+  - Live mathematical notation editing with MathLive
+  - Real-time constraint and variable adjustments
+  - Side-by-side comparison of original vs modified solutions
+  - Sensitivity analysis with visual sweep charts
 
 ## 📋 Prerequisites
 
@@ -22,39 +27,55 @@ An intelligent Streamlit application that helps users solve Operations Research 
 
 ## 🛠️ Installation
 
-1. Clone the repository:
+### Quick Start
+
+1. **Clone the repository:**
 ```bash
 git clone https://github.com/UpalkKazi/Operational_Research_Software.v1.git
 cd Operational_Research_Software.v1
 ```
 
-2. Create a virtual environment:
+2. **Create a virtual environment:**
 ```bash
 python -m venv venv
-# On Windows:
+```
+
+3. **Activate the virtual environment:**
+
+**Windows:**
+```bash
 venv\Scripts\activate
-# On macOS/Linux:
+```
+
+**macOS/Linux:**
+```bash
 source venv/bin/activate
 ```
 
-3. Install dependencies:
+4. **Install dependencies:**
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Set up environment variables:
-   - Copy `.env.example` to `.env`
-   - Add your API key:
+5. **Set up environment variables:**
+   - Copy `.env.example` to `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+   - Edit `.env` and add your API key:
      ```
      ANTHROPIC_API_KEY=your_anthropic_key_here
      # OR
      OPENAI_API_KEY=your_openai_key_here
      ```
 
-5. (Optional) Install additional solvers:
+6. **(Optional) Install additional solvers:**
 ```bash
-# For SCIP support:
+# For SCIP support (requires conda):
 conda install -c conda-forge pyscipopt
+
+# For Gurobi (requires license):
+pip install gurobipy
 ```
 
 ## 🏃‍♂️ Running the Application
@@ -67,10 +88,20 @@ The application will open in your default browser at `http://localhost:8501`
 
 ## 📖 Usage
 
+### Basic Workflow
+
 1. **Describe Your Problem**: Enter a natural language description of your optimization problem
 2. **Select Solver**: Choose a solver or let the app auto-detect the best one
 3. **Solve**: Click "Solve Problem" to run the optimization pipeline
 4. **View Results**: See the solution, interpretation, and visualizations
+
+### Model Playground (New!)
+
+After solving a problem, use the **🧮 Model Playground** tab to:
+- **Edit Models**: Modify objectives and constraints using visual math notation
+- **Test Scenarios**: Change parameters and see immediate impact on solutions
+- **Sensitivity Analysis**: Sweep constraint bounds to understand solution behavior
+- **Compare Results**: View original vs modified solutions side-by-side
 
 ### Example Problems
 
@@ -80,6 +111,7 @@ Click "Load Example" to see sample problems for:
 - Transportation (minimize shipping costs)
 - Assignment (worker-task allocation)
 - Scheduling (job-machine scheduling)
+- Knapsack (investment portfolio optimization)
 
 ### File Upload
 
@@ -110,9 +142,12 @@ or-assistant/
 │   │   └── miplib_cache.py
 │   ├── ui/                  # UI components
 │   │   ├── solver_settings.py
-│   │   └── solver_progress.py
+│   │   ├── solver_progress.py
+│   │   ├── mathlive_component.py    # MathLive editor
+│   │   └── mathlive_build/          # Component assets
 │   ├── utils/               # Utilities
-│   │   └── api_client.py
+│   │   ├── api_client.py
+│   │   └── model_editor.py          # Model editing logic
 │   └── visualization/       # Chart generation
 │       └── chart_generator.py
 ├── requirements.txt
