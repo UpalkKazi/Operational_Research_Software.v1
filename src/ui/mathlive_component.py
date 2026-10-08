@@ -62,7 +62,7 @@ _TOOLBAR_OR_FULL = r"""<div class="or-toolbar" id="toolbar">
       <button class="tb-btn" data-cmd='["insert","\\sum_{i=1}^{m}x_{ij}=d_{j}"]' data-tip="Demand constraint" style="font-size:11px">Demand</button>
       <button class="tb-btn" data-cmd='["insert","\\sum_{i=1}^{n}w_{i}x_{i}\\leq W"]' data-tip="Knapsack capacity" style="font-size:11px">Knapsack</button>
     </div>
-  </div>"""
+  </div>"""  # noqa: E501
 
 _TOOLBAR_MINIMAL = r"""<div class="or-toolbar" id="toolbar">
     <div class="or-toolbar-section">
@@ -78,11 +78,11 @@ _TOOLBAR_MINIMAL = r"""<div class="or-toolbar" id="toolbar">
 
 def mathlive_editor(
     label: str,
-    initial_latex: str = '',
+    initial_latex: str = "",
     height: int = 120,
-    key: str = 'mathlive',
+    key: str = "mathlive",
     read_only: bool = False,
-    toolbar_mode: str = 'or_full',
+    toolbar_mode: str = "or_full",
 ) -> str | None:
     """Render a MathLive editor and return the current LaTeX string.
 
@@ -90,14 +90,15 @@ def mathlive_editor(
     Edits inside the visual math field are sent directly to Python.
     Returns the current LaTeX, or *initial_latex* before any interaction.
     """
-    if toolbar_mode == 'or_full':
+    if toolbar_mode == "or_full":
         toolbar_html = _TOOLBAR_OR_FULL
-    elif toolbar_mode == 'minimal':
+    elif toolbar_mode == "minimal":
         toolbar_html = _TOOLBAR_MINIMAL
     else:
-        toolbar_html = ''
+        toolbar_html = ""
 
     import streamlit as st
+
     current = st.session_state.get(key)
     effective_latex = current if current else initial_latex
 

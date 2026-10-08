@@ -8,13 +8,14 @@ Runs classify + build + solve and prints the answer.
 """
 
 import sys
-import os
 import time
-sys.path.insert(0, '.')
+
+sys.path.insert(0, ".")
 
 # Load .env file so ANTHROPIC_API_KEY is available
 try:
     from dotenv import load_dotenv
+
     load_dotenv()
 except ImportError:
     pass
@@ -23,9 +24,9 @@ try:
     from src.agents.problem_classifier import ProblemClassifier
     from src.modeling.model_generator import ModelGenerator
     from src.solvers.solver_interface import SolverInterface
-    import pulp
+    import pulp  # noqa: F401  (dependency check)
 except ImportError as e:
-    print(f"\n  ERROR: Could not import required modules.")
+    print("\n  ERROR: Could not import required modules.")
     print(f"  Details: {e}")
     sys.exit(1)
 
@@ -55,9 +56,9 @@ def _print_guidance(step: int, err_str: str) -> None:
         print("  Windows: $env:OR_DEBUG='1'; python tests/test_phase4.py")
 
 
-print("\n" + "="*60)
+print("\n" + "=" * 60)
 print("  OR ASSISTANT — Phase 4: Solver Test")
-print("="*60)
+print("=" * 60)
 print("\n  Paste your problem in plain English below.")
 print("  Press Enter twice when done.\n")
 
@@ -87,9 +88,9 @@ start_total = time.time()
 # -----------------------------------------------------------------
 #  Step 1: Classify
 # -----------------------------------------------------------------
-print("\n" + "-"*60)
+print("\n" + "-" * 60)
 print("  Step 1: Classifying...")
-print("-"*60)
+print("-" * 60)
 try:
     classifier = ProblemClassifier()
     problem_data = classifier.classify(problem)
@@ -101,15 +102,16 @@ except Exception as e:
     print(f"\n  FAILED at Step 1: {err}")
     _print_guidance(1, err)
     import traceback
+
     traceback.print_exc()
     sys.exit(1)
 
 # -----------------------------------------------------------------
 #  Step 2: Build model
 # -----------------------------------------------------------------
-print("\n" + "-"*60)
+print("\n" + "-" * 60)
 print("  Step 2: Building model...")
-print("-"*60)
+print("-" * 60)
 try:
     generator = ModelGenerator()
     model = generator.generate(problem_data)
@@ -120,22 +122,23 @@ except Exception as e:
     print(f"\n  FAILED at Step 2: {err}")
     _print_guidance(2, err)
     import traceback
+
     traceback.print_exc()
     sys.exit(1)
 
 # -----------------------------------------------------------------
 #  Step 3: Solve
 # -----------------------------------------------------------------
-print("\n" + "-"*60)
+print("\n" + "-" * 60)
 print("  Step 3: Solving...")
-print("-"*60)
+print("-" * 60)
 try:
-    solver   = SolverInterface('pulp')
+    solver = SolverInterface("pulp")
     solution = solver.solve(model)
 
-    status = solution.get('status', 'Unknown')
-    obj    = solution.get('objective_value')
-    t      = solution.get('solve_time', 0)
+    status = solution.get("status", "Unknown")
+    obj = solution.get("objective_value")
+    t = solution.get("solve_time", 0)
 
     print(f"\n  Status          : {status}")
     if obj is not None:
@@ -143,17 +146,17 @@ try:
     print(f"  Solve Time      : {t:.3f}s")
 
     # Show warnings from the solver
-    for w in solution.get('warnings', []):
+    for w in solution.get("warnings", []):
         print(f"  WARNING: {w}")
 
-    if solution.get('error_message'):
+    if solution.get("error_message"):
         print(f"  ERROR: {solution['error_message']}")
 
-    vars_dict = solution.get('variables', {})
-    nonzero   = {k: v for k, v in vars_dict.items() if v is not None and abs(v) > 0.0001}
-    zero      = {k: v for k, v in vars_dict.items() if v is not None and abs(v) <= 0.0001}
+    vars_dict = solution.get("variables", {})
+    nonzero = {k: v for k, v in vars_dict.items() if v is not None and abs(v) > 0.0001}
+    zero = {k: v for k, v in vars_dict.items() if v is not None and abs(v) <= 0.0001}
 
-    print(f"\n  Active Variables (non-zero):")
+    print("\n  Active Variables (non-zero):")
     if nonzero:
         for name, val in list(nonzero.items())[:15]:
             print(f"    {name} = {val:.4f}")
@@ -167,23 +170,24 @@ try:
         print(f"\n  Zero Variables  : {zkeys}" + (" ..." if len(zero) > 5 else ""))
 
     total = time.time() - start_total
-    print("\n" + "-"*60)
-    if solution.get('is_optimal'):
-        print(f"  RESULT: OPTIMAL SOLUTION FOUND")
+    print("\n" + "-" * 60)
+    if solution.get("is_optimal"):
+        print("  RESULT: OPTIMAL SOLUTION FOUND")
         print(f"  Objective Value = {obj:.4f}")
         print(f"  Total time      : {total:.1f}s")
     else:
         print(f"  RESULT: {status} — no optimal solution.")
-        for w in solution.get('warnings', []):
+        for w in solution.get("warnings", []):
             print(f"  {w}")
-        if not solution.get('warnings'):
-            print(f"  Check your constraints — they may contradict each other.")
-    print("-"*60 + "\n")
+        if not solution.get("warnings"):
+            print("  Check your constraints — they may contradict each other.")
+    print("-" * 60 + "\n")
 
 except Exception as e:
     err = str(e)
     print(f"\n  FAILED at Step 3: {err}")
     _print_guidance(3, err)
     import traceback
+
     traceback.print_exc()
     sys.exit(1)
