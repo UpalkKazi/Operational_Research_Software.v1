@@ -1,0 +1,1 @@
+A bakery makes bread and cake. Bread earns 3 and cake earns 5. We have 40 hours of oven time.

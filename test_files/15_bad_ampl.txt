@@ -1,0 +1,3 @@
+var x >= 0;
+maximize z: 3*x*x;
+subject to c: x <= 4;

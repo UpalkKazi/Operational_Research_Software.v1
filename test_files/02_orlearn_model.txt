@@ -1,0 +1,15 @@
+from orlearn import OR
+
+# Production planning: maximize profit
+result = (OR()
+    .maximize([45, 80], names=['chairs', 'tables'])
+    .subject_to([5, 20], "<=", 400, "Wood")    # Wood constraint
+    .subject_to([10, 15], "<=", 450, "Labor")  # Labor constraint
+    .solve())
+
+print(f"Make {result.solution['chairs']:.0f} chairs")
+print(f"Make {result.solution['tables']:.0f} tables")
+print(f"Profit: ${result.value:.0f}")
+
+# Visualize the feasible region (2D problems only)
+result.visualize()

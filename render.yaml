@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: or-studio
+    runtime: docker
+    plan: starter
+    healthCheckPath: /_stcore/health
+    autoDeploy: true
+    envVars:
+      - key: ENABLE_AI
+        value: "False"

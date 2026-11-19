@@ -1,0 +1,5 @@
+warehouse,store_1,store_2,store_3,store_4,supply
+warehouse_A,5,8,6,7,100
+warehouse_B,6,7,9,5,150
+warehouse_C,8,6,7,9,200
+demand,,80,120,90,110

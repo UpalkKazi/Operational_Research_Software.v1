@@ -1,0 +1,6 @@
+# Furniture production (AMPL-style)
+var chairs >= 0;
+var tables >= 0;
+maximize profit: 45*chairs + 80*tables;
+subject to wood:  5*chairs + 20*tables <= 400;
+subject to labor: 10*chairs + 15*tables <= 450;

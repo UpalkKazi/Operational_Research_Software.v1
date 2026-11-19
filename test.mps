@@ -1,0 +1,21 @@
+NAME          PROFIT_MAX
+OBJSENSE
+ MAX
+ROWS
+ N  PROFIT
+ L  LABOR
+ L  MATERIAL
+COLUMNS
+    TABLES    PROFIT       70
+    TABLES    LABOR         4
+    TABLES    MATERIAL      2
+    CHAIRS    PROFIT       50
+    CHAIRS    LABOR         3
+    CHAIRS    MATERIAL      1
+RHS
+    RHS1      LABOR       240
+    RHS1      MATERIAL    100
+BOUNDS
+ LO BND1      TABLES        0
+ LO BND1      CHAIRS        0
+ENDATA

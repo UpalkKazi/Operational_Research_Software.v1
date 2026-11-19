@@ -1,0 +1,45 @@
+# Production runtime for OR Studio (Python 3.12; also tested on 3.14)
+# Natural-language chat (optional: only used when an API key is configured)
+anthropic>=0.40,<3
+openai>=1.12,<4
+
+# Optimization backends: CBC (PuLP), OSQP + GLPK (CVXPY/CVXOPT), SCIP (PySCIPOpt)
+pulp>=3.0,<4
+cvxpy>=1.5,<2
+osqp>=0.6
+cvxopt>=1.3,<2
+pyscipopt>=5.0,<7
+ortools>=9.8,<10
+
+# OR-Learn, pinned to the commit the adapter and examples were verified against
+orlearn @ https://github.com/harunpirim/orlearn/archive/38355732feae2c6cc776d58b6f01491bbce78124.zip
+
+# Data, graph, and visualization
+numpy>=1.26,<3
+pandas>=2.2,<4
+scipy>=1.12,<2
+networkx>=3.2,<4
+matplotlib>=3.8,<4
+plotly>=5.18,<8
+seaborn>=0.13,<1
+
+# Application and CLI (the UI uses st.space, st.dialog(on_dismiss=...), horizontal containers)
+streamlit>=1.67,<2
+click>=8.1,<9
+rich>=13.7,<15
+python-dotenv>=1.0,<2
+
+# File loading and MIPLIB
+openpyxl>=3.1,<4
+xlrd>=2,<3
+olefile>=0.46
+python-docx>=1.1,<2
+pymupdf>=1.24,<3
+pdfplumber>=0.11,<1
+requests>=2.31,<3
+
+# Legacy UI (legacy_app.py) model editor and validation
+sympy>=1.12,<2
+antlr4-python3-runtime==4.11
+pydantic>=2.6,<3
+pyyaml>=6,<7

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="./vendor/mathlive.min.js"></script>
+  <style>
+    :root { --text:#172235; --muted:#475569; --line:#CBD5E1; --surface:#FFFFFF; --page:#F6F8FB; --blue:#1D4ED8; --warn:#92400E; }
+    * { box-sizing: border-box; }
+    body { margin:0; padding:2px 2px 4px; font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--text); background:transparent; font-size:15px; }
+    .row { display:flex; gap:8px; align-items:stretch; }
+    math-field {
+      flex:1; min-width:0; min-height:48px; font-size:20px; color:var(--text);
+      border:1px solid var(--line); border-radius:10px; padding:8px 12px; background:var(--surface);
+      --caret-color: var(--blue); --selection-background-color: #DBEAFE; --primary-color: var(--blue);
+      --contains-highlight-background-color: #EFF6FF;
+    }
+    math-field:focus-within { outline:3px solid var(--blue); outline-offset:1px; border-color:var(--blue); }
+    math-field::part(virtual-keyboard-toggle), math-field::part(menu-toggle) { display:none; }
+    .toggle {
+      flex:none; display:inline-flex; align-items:center; gap:6px; padding:0 14px; min-height:48px;
+      border:1px solid var(--line); border-radius:10px; background:var(--surface); color:var(--text);
+      font:600 14px/1 inherit; cursor:pointer;
+    }
+    .toggle[aria-expanded="true"] { background:#EFF6FF; border-color:var(--blue); color:var(--blue); }
+    button:focus-visible { outline:3px solid var(--blue); outline-offset:2px; }
+    .pad { margin-top:8px; padding:10px; border:1px solid var(--line); border-radius:12px; background:var(--surface); }
+    .pad[hidden] { display:none; }
+    .group-title { font-size:12px; font-weight:600; color:var(--muted); margin:2px 0 6px; letter-spacing:.02em; }
+    .keys { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+    .key {
+      min-width:44px; min-height:40px; padding:0 10px; border:1px solid var(--line); border-radius:8px;
+      background:var(--page); color:var(--text); font-size:17px; cursor:pointer; position:relative;
+    }
+    .key:hover { border-color:var(--blue); background:#EFF6FF; }
+    .key.var { font-family: "Cambria Math", "STIX Two Math", serif; font-style:italic; font-size:15px; }
+    .key[aria-disabled="true"] { opacity:.55; cursor:not-allowed; text-decoration:line-through; text-decoration-color:#B45309; }
+    .key[aria-disabled="true"]:hover { border-color:var(--line); background:var(--page); }
+    .note { font-size:12.5px; color:var(--muted); margin:4px 0 0; }
+    .note strong { color:var(--warn); }
+    .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+    @media (max-width: 520px) {
+      .key { min-width:40px; min-height:40px; font-size:16px; padding:0 8px; }
+      .toggle { padding:0 10px; }
+      .toggle .label { display:none; }
+      math-field { font-size:18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <math-field id="mf" aria-describedby="hint"></math-field>
+    <button class="toggle" id="toggle" type="button" aria-expanded="false" aria-controls="pad" aria-label="Symbols keypad" title="Symbols keypad">
+      <span aria-hidden="true">∑±</span><span class="label">Symbols</span>
+    </button>
+  </div>
+  <p class="sr" id="hint">Type math or open the Symbols keypad. Escape closes the keypad.</p>
+  <div class="pad" id="pad" role="group" aria-label="Symbols keypad" hidden>
+    <div class="group-title" id="g1">Common</div>
+    <div class="keys" role="group" aria-labelledby="g1" id="common"></div>
+    <div class="group-title" id="g3">Variables</div>
+    <div class="keys" role="group" aria-labelledby="g3" id="vars"></div>
+    <div class="group-title" id="g2">More</div>
+    <div class="keys" role="group" aria-labelledby="g2" id="more"></div>
+    <p class="note" id="note"><strong>Struck-through</strong> keys are not solvable in this linear model.</p>
+  </div>
+  <div aria-live="polite" class="sr" id="live"></div>
+
+  <script>
+    ;(function () {
+      const S = {
+        setReady() { parent.postMessage({ isStreamlitMessage: true, type: "streamlit:componentReady", apiVersion: 1 }, "*"); },
+        setValue(v) { parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setComponentValue", value: v, dataType: "json" }, "*"); },
+        setHeight(h) { parent.postMessage({ isStreamlitMessage: true, type: "streamlit:setFrameHeight", height: h }, "*"); },
+      };
+      window.S = S;
+    })();
+
+    if (window.MathfieldElement) {
+      MathfieldElement.fontsDirectory = "./vendor/fonts";
+      MathfieldElement.soundsDirectory = null;
+    }
+    const mf = document.getElementById("mf");
+    const toggle = document.getElementById("toggle");
+    const pad = document.getElementById("pad");
+    const live = document.getElementById("live");
+    mf.mathVirtualKeyboardPolicy = "manual";
+    mf.smartFence = true;
+    mf.smartMode = false;
+    mf.inlineShortcuts = { "<=": "\\le", ">=": "\\ge", "!=": "\\ne", "*": "\\cdot" };
+
+    const COMMON = [
+      { t: "+", l: "+", a: "plus" }, { t: "−", l: "-", a: "minus" }, { t: "×", l: "\\cdot", a: "times" },
+      { t: "≤", l: "\\le", a: "less than or equal", rel: true }, { t: "≥", l: "\\ge", a: "greater than or equal", rel: true },
+      { t: "=", l: "=", a: "equals", rel: true }, { t: "(", l: "(", a: "open parenthesis" }, { t: ")", l: ")", a: "close parenthesis" },
+      { t: "x□", l: "#@_{#?}", a: "subscript" },
+    ];
+    const MORE = [
+      { t: "a⁄b", l: "\\frac{#@}{#?}", a: "fraction" }, { t: "xⁿ", l: "#@^{#?}", a: "power (numbers only)" },
+      { t: "∑", l: "\\sum_{#?}^{#?}", a: "summation", bad: "Summations can't be solved here; write out the terms or use the Algebraic tab." },
+      { t: "√", l: "\\sqrt{#?}", a: "square root", bad: "Square roots are not linear." },
+      { t: "x·y", l: "#?\\cdot#?", a: "product of two terms" },
+      { t: "a·x+b·y", l: "#?\\,#?+#?\\,#?", a: "two-term template" },
+    ];
+
+    let lastInit = null, lastFocus = null, mode = "expression", timer = null, lastSent = null, lastPadSig = null;
+
+    function send(now) {
+      const value = mf.getValue("latex");
+      clearTimeout(timer);
+      const go = () => { if (value !== lastSent) { lastSent = value; S.setValue(value); } };
+      if (now) go(); else timer = setTimeout(go, 350);
+    }
+
+    function measure() { S.setHeight(document.body.scrollHeight + 4); }
+
+    function makeKey(k, extraClass) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "key" + (extraClass ? " " + extraClass : "");
+      b.textContent = k.t;
+      const blocked = k.bad || (k.rel && mode === "objective");
+      const reason = k.bad || (k.rel ? "The objective can't contain a relation; set the direction with Maximize/Minimize." : "");
+      b.setAttribute("aria-label", k.a + (blocked ? " (not solvable here)" : ""));
+      b.title = blocked ? reason : "Insert " + k.a;
+      if (blocked) b.setAttribute("aria-disabled", "true");
+      b.addEventListener("mousedown", (e) => e.preventDefault());
+      b.addEventListener("click", () => {
+        if (blocked) { live.textContent = reason; return; }
+        mf.executeCommand(["insert", k.l, { focus: true, feedback: false, selectionMode: "placeholder", format: "latex" }]);
+        mf.focus();
+        send(true);
+      });
+      return b;
+    }
+
+    function buildPad(variables) {
+      const common = document.getElementById("common"), more = document.getElementById("more"), vars = document.getElementById("vars");
+      common.innerHTML = ""; more.innerHTML = ""; vars.innerHTML = "";
+      COMMON.forEach((k) => common.appendChild(makeKey(k)));
+      MORE.forEach((k) => more.appendChild(makeKey(k)));
+      (variables || []).slice(0, 24).forEach((v) => vars.appendChild(makeKey({ t: v.name, l: v.latex, a: "variable " + v.name }, "var")));
+      document.getElementById("g3").hidden = !(variables && variables.length);
+    }
+
+    function setOpen(open, returnFocus) {
+      pad.hidden = !open;
+      toggle.setAttribute("aria-expanded", String(open));
+      measure();
+      if (!open && returnFocus) returnFocus.focus();
+      if (open) { const first = pad.querySelector(".key:not([aria-disabled='true'])"); if (first && document.activeElement === toggle) first.focus(); }
+    }
+
+    toggle.addEventListener("click", () => setOpen(pad.hidden, null));
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !pad.hidden) {
+        e.stopPropagation(); e.preventDefault();
+        const inPad = pad.contains(document.activeElement);
+        setOpen(false, inPad ? toggle : mf);
+      }
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { send(true); }
+    }, true);
+
+    mf.addEventListener("input", () => send(false));
+    mf.addEventListener("change", () => send(true));
+    mf.addEventListener("focusout", () => send(true));
+    window.addEventListener("blur", () => send(true));
+    window.addEventListener("pagehide", () => send(true));
+
+    window.addEventListener("message", (event) => {
+      if (!event.data || event.data.type !== "streamlit:render") return;
+      const args = event.data.args || {};
+      mode = args.mode || "expression";
+      mf.setAttribute("aria-label", args.label || "Math expression");
+      if (args.initial_latex !== undefined && args.initial_latex !== lastInit) {
+        mf.setValue(args.initial_latex || "", { silenceNotifications: true });
+        lastInit = args.initial_latex;
+        lastSent = args.initial_latex;
+      }
+      const padSig = mode + "|" + JSON.stringify(args.variables || []);
+      if (padSig !== lastPadSig) { lastPadSig = padSig; buildPad(args.variables || []); }
+      if (args.read_only) mf.setAttribute("read-only", ""); else mf.removeAttribute("read-only");
+      if (args.focus_token && args.focus_token !== lastFocus) {
+        lastFocus = args.focus_token;
+        setTimeout(() => mf.focus(), 60);
+      }
+      measure();
+    });
+
+    new ResizeObserver(measure).observe(document.body);
+    S.setReady();
+    measure();
+  </script>
+</body>
+</html>

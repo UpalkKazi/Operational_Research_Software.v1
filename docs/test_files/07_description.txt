@@ -1,0 +1,1 @@
+We make chairs and tables. A chair earns $45 and a table earns $80. A chair uses 5 units of wood and 10 hours of labor; a table uses 20 units of wood and 15 hours of labor. We have 400 units of wood and 450 hours of labor. How many of each should we make to maximize profit?
