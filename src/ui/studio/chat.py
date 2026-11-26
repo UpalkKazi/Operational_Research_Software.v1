@@ -472,7 +472,8 @@ CTRL_ENTER_JS = """
 def render_composer() -> None:
     draft = state.pref("draft") or ""
     _toolbar_mono_css(draft)
-    with st.container(border=True, key="composer"):
+    docked = bool(state.ws().messages)
+    with st.container(border=True, key="composer_dock" if docked else "composer"):
         state.bound(st.text_area, "draft", "draft", label="Problem", placeholder=PLACEHOLDER,
                     height=150 if not state.ws().messages else 110, label_visibility="collapsed")
         fmt = state.pref("fmt")

@@ -59,6 +59,33 @@ header[data-testid="stHeader"] {{ display:none !important; }}
 [data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"], [data-testid="collapsedControl"] {{ display:none !important; }}
 .block-container, [data-testid="stMainBlockContainer"] {{ max-width: {width} !important; padding: 0 20px 96px !important; }}
 @media (max-width: 640px) {{ .block-container, [data-testid="stMainBlockContainer"] {{ padding: 0 12px 96px !important; }} }}
+/* ChatGPT-style dock: composer stays on screen; the thread scrolls under it. */
+.stApp:has(.st-key-composer_dock) .block-container,
+.stApp:has(.st-key-composer_dock) [data-testid="stMainBlockContainer"] {{
+  padding-bottom: 260px !important;
+}}
+div.st-key-composer_dock {{
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 50% !important;
+  right: auto !important;
+  width: min(880px, calc(100vw - 24px)) !important;
+  max-width: 880px !important;
+  transform: translateX(-50%);
+  z-index: 400 !important;
+  margin: 0 !important;
+  padding: 16px 0 18px !important;
+  background: linear-gradient(to top, var(--ors-page) 62%, rgba(246,248,251,0));
+}}
+div.st-key-composer_dock [data-testid="stVerticalBlockBorderWrapper"] {{
+  background: var(--ors-surface) !important;
+  box-shadow: 0 10px 32px rgba(23,34,53,0.12);
+}}
+@media (max-width: 640px) {{
+  div.st-key-composer_dock {{ width: calc(100vw - 16px) !important; padding-bottom: 10px !important; }}
+  .stApp:has(.st-key-composer_dock) .block-container,
+  .stApp:has(.st-key-composer_dock) [data-testid="stMainBlockContainer"] {{ padding-bottom: 280px !important; }}
+}}
 p, li, label, .stMarkdown {{ color: var(--ors-text); }}
 small, .ors-muted, [data-testid="stCaptionContainer"] {{ color: var(--ors-muted) !important; }}
 h1 {{ font-size: 1.9rem !important; font-weight: 700 !important; letter-spacing: -0.01em; color: var(--ors-text) !important; }}
@@ -94,8 +121,6 @@ h3 {{ font-size: 1.08rem !important; font-weight: 650 !important; color: var(--o
 .ors-kv b {{ color: var(--ors-text); font-weight: 600; }}
 .ors-mono, .ors-mono textarea {{ font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace !important; font-size: 14.5px !important; line-height: 1.5 !important; }}
 div[data-testid="stVerticalBlockBorderWrapper"] {{ background: var(--ors-surface); border-color: var(--ors-line) !important; border-radius: 14px !important; }}
-.st-key-composer, .st-key-composer_mono {{ position: sticky; bottom: 12px; z-index: 50; }}
-.st-key-composer > div, .st-key-composer_mono > div {{ box-shadow: 0 8px 24px rgba(23,34,53,0.08); }}
 .st-key-composer_mono textarea {{ font-family: ui-monospace, "Cascadia Code", Consolas, monospace !important; font-size: 14.5px !important; }}
 textarea {{ font-size: 15.5px !important; color: var(--ors-text) !important; background: #FFFFFF !important; }}
 textarea::placeholder, input::placeholder {{ color: #5B6B82 !important; opacity: 1; }}
@@ -106,7 +131,7 @@ textarea::placeholder, input::placeholder {{ color: #5B6B82 !important; opacity:
 .ors-selected > div {{ border: 2px solid var(--ors-blue) !important; box-shadow: 0 0 0 3px #DBEAFE; }}
 [class*="st-key-tplcard_sel_"] {{ border: 2px solid var(--ors-blue) !important; box-shadow: 0 0 0 3px #DBEAFE; background: #F8FAFF; }}
 [class*="st-key-tplcard_"] {{ height: 100%; }}
-.ors-hero {{ text-align:center; margin: 9vh 0 18px; }}
+.ors-hero {{ text-align:center; margin: 6vh 0 18px; }}
 .ors-hero h1 {{ font-size: 2.1rem !important; }}
 .ors-hero p {{ color: var(--ors-muted); font-size: 1.02rem; }}
 .stButton button, .stDownloadButton button, .stFormSubmitButton button {{ border-radius: 10px; font-weight: 600; min-height: 40px; }}

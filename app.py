@@ -14,7 +14,8 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-load_dotenv(ROOT / ".env")
+# .env wins over inherited shell variables, so a stale placeholder key cannot mask it.
+load_dotenv(ROOT / ".env", override=True)
 
 import streamlit as st  # noqa: E402
 
@@ -42,4 +43,4 @@ def main() -> None:
     state.show_flashes()
 
 
-main()
+main()  # empty composer in-flow; dock after first message

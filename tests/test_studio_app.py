@@ -13,6 +13,8 @@ APP = Path(__file__).parents[1] / "app.py"
 
 @pytest.fixture(autouse=True)
 def no_credentials(monkeypatch):
+    # app.py loads .env with override=True, so neutralise it before setting placeholders.
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *args, **kwargs: False)
     for key in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY"):
         monkeypatch.setenv(key, "your_api_key_here")
 

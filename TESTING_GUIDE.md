@@ -639,9 +639,13 @@ You see: box gone
 
 ---
 
-## 16. Plain English (no working AI key)
+## 16. Plain English
 
 Reload. Chat.
+
+With a working key in `.env`, you get a real result card.
+To test the no-key message instead, rename `.env` to `.env.off`, restart the app, then rename it back.
+Setting placeholder keys in the terminal no longer works, because `.env` now overrides shell variables.
 
 Put:
 
@@ -651,8 +655,8 @@ A bakery makes bread and cake. Bread earns 3 and cake earns 5. We have 40 hours 
 
 You see: **Detected: Natural Language**
 Press: **Solve Problem**
-You see: **AI credentials required** (or HTTP **429** if a key is set but has no credits)
-The text stays in the box.
+You see: step progress, then a result card built from the AI's model.
+With no key configured you instead see **AI credentials required**, and the text stays in the box.
 
 Press: **Switch format to AMPL-style**
 You see: Format is AMPL-style, text still there
