@@ -116,3 +116,19 @@ def test_transportation_problem_solve():
     
     assert solution['status'] == SolverStatus.OPTIMAL.value
     assert solution['objective_value'] is not None
+
+
+def test_cvxpy_route_keeps_bounds_and_objective_constant():
+    """Dropping either the bounds or the constant reports a better-than-optimal value."""
+    prob = pulp.LpProblem("bounded", pulp.LpMinimize)
+    x = pulp.LpVariable("x", lowBound=2, upBound=8)
+    prob += 3 * x + 7, "Cost"
+    prob += x >= 1, "Loose"
+
+    pulp_solution = SolverInterface("pulp").solve(prob)
+    cvxpy_solution = SolverInterface("cvxpy").solve(prob)
+
+    assert pulp_solution['objective_value'] == pytest.approx(13.0)
+    assert cvxpy_solution['status'] == SolverStatus.OPTIMAL.value
+    assert cvxpy_solution['objective_value'] == pytest.approx(13.0)
+    assert cvxpy_solution['variables']['x'] == pytest.approx(2.0)

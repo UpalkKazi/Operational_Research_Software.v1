@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import gzip
 import io
+import tempfile
 import time
 from pathlib import Path
+from unittest import mock
 
 import pytest
 
@@ -320,6 +322,49 @@ def test_miplib_rejects_unsafe_names(bad):
 
     with pytest.raises(miplib_service.MiplibError):
         miplib_service.validate_name(bad)
+
+
+def test_pulp_exported_mps_keeps_its_maximize_sense():
+    """PuLP's writeMPS records a maximize objective only as a *SENSE: comment."""
+    import pulp
+
+    from src.ingestion.mps_reader import read_mps_text
+
+    prob = pulp.LpProblem("furniture", pulp.LpMaximize)
+    chairs = pulp.LpVariable("chairs", 0)
+    tables = pulp.LpVariable("tables", 0)
+    prob += 45 * chairs + 80 * tables
+    prob += 5 * chairs + 20 * tables <= 400, "wood"
+    prob += 10 * chairs + 15 * tables <= 450, "labor"
+    path = Path(tempfile.mkdtemp()) / "furniture.mps"
+    prob.writeMPS(str(path))
+    text = path.read_text()
+
+    assert "*SENSE:Maximize" in text
+    spec = read_mps_text(text)
+    assert spec.objective.sense == "maximize"
+    assert solve_spec(spec, "pulp_cbc", 30)["objective"] == pytest.approx(2200)
+
+
+def test_explicit_objsense_beats_the_sense_comment():
+    from src.ingestion.mps_reader import read_mps_text
+
+    text = (
+        "*SENSE:Maximize\nNAME          T\nOBJSENSE\n    MIN\nROWS\n N obj\n L c1\n"
+        "COLUMNS\n    x  obj  1.0  c1  1.0\nRHS\n    r  c1  4.0\nENDATA\n"
+    )
+    assert read_mps_text(text).objective.sense == "minimize"
+
+
+def test_cbc_availability_requires_a_runnable_binary():
+    """PuLP ships an x86_64 CBC, so a present-but-unrunnable binary must not count."""
+    from src.solvers import backends
+
+    with mock.patch.object(backends, "_cbc_runs", return_value=(False, "Bad CPU type")):
+        info = backends.availability(refresh=True)["pulp_cbc"]
+    backends.availability(refresh=True)
+    assert info["available"] is False
+    assert "cannot run here" in info["reason"]
 
 
 @pytest.mark.network

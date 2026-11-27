@@ -137,3 +137,8 @@ python cli.py solvers
 OR-Learn examples are adapted from
 [harunpirim/orlearn](https://github.com/harunpirim/orlearn) (MIT). MathLive is
 vendored under `src/ui/mathlive_build/vendor` (MIT).
+
+Harun Pirim's October 2026 dependency and correctness review identified the
+PuLP/highspy load-order crash on Linux, the Apple Silicon CBC failure, the
+dropped bounds and objective constant in the CVXPY conversion, and PuLP's
+`*SENSE:Maximize` MPS comment. Those fixes are carried in this version.

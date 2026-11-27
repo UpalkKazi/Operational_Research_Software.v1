@@ -27,6 +27,21 @@ _GLPK_LOCK = threading.Lock()
 _AVAILABILITY: Optional[Dict[str, Dict[str, Any]]] = None
 
 
+def _cbc_runs() -> Tuple[bool, str]:
+    """Solve a one-variable LP so an unrunnable CBC binary is reported as missing."""
+    import pulp
+
+    try:
+        probe = pulp.LpProblem("cbc_probe", pulp.LpMaximize)
+        x = pulp.LpVariable("x", 0, 1)
+        probe += x
+        probe += x <= 1
+        probe.solve(pulp.PULP_CBC_CMD(msg=False))
+        return pulp.LpStatus[probe.status] == "Optimal", "no optimal answer"
+    except Exception as exc:
+        return False, str(exc).strip().splitlines()[0][:120] if str(exc).strip() else type(exc).__name__
+
+
 def availability(refresh: bool = False) -> Dict[str, Dict[str, Any]]:
     global _AVAILABILITY
     if _AVAILABILITY is not None and not refresh:
@@ -35,8 +50,15 @@ def availability(refresh: bool = False) -> Dict[str, Dict[str, Any]]:
     try:
         import pulp
 
-        ok = pulp.PULP_CBC_CMD(msg=False).available()
-        info["pulp_cbc"] = {"available": bool(ok), "version": f"PuLP {pulp.__version__}", "reason": "" if ok else "CBC binary not found in the PuLP install."}
+        ok = bool(pulp.PULP_CBC_CMD(msg=False).available())
+        reason = "" if ok else "CBC binary not found in the PuLP install."
+        if ok:
+            # available() only checks the file exists. PuLP ships an x86_64 CBC for
+            # macOS, so on Apple Silicon without Rosetta it is present but cannot run.
+            ok, failure = _cbc_runs()
+            if not ok:
+                reason = f"The bundled CBC binary cannot run here ({failure})."
+        info["pulp_cbc"] = {"available": ok, "version": f"PuLP {pulp.__version__}", "reason": reason}
     except Exception as exc:  # pragma: no cover
         info["pulp_cbc"] = {"available": False, "version": "", "reason": f"PuLP unavailable: {exc}"}
     try:

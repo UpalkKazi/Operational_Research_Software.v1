@@ -1267,10 +1267,13 @@ class ModelGenerator:
             exec(code, namespace)
 
             prob = namespace.get("prob")
+            if not isinstance(prob, pulp.LpProblem) and callable(namespace.get("create_model")):
+                # Models are sometimes wrapped in a factory instead of a top-level prob.
+                prob = namespace["create_model"]()
             if not isinstance(prob, pulp.LpProblem):
                 raise TypeError(
-                    f"Expected namespace['prob'] to be pulp.LpProblem, "
-                    f"got {type(prob).__name__}"
+                    f"Expected the generated code to define 'prob' or a create_model() "
+                    f"returning a pulp.LpProblem, got {type(prob).__name__}"
                 )
             return prob
 
@@ -1507,21 +1510,10 @@ class ModelGenerator:
         else:
             detected_type = 'linear_programming'
 
-        # --- Try CVXPY first --------------------------------------------
-        model = None
+        # CVXPY has no MPS reader (cp.Problem.from_file does not exist), so the
+        # structured dict from the MPS parser is always built through PuLP.
         used_cvxpy = False
-        best_solver = None
-
-        if solver_preference in ('auto', 'cvxpy') and file_path:
-            try:
-                model, best_solver = self._build_mps_with_cvxpy(file_path)
-                used_cvxpy = True
-            except Exception as exc:
-                print(f"CVXPY MPS load failed: {exc}. Falling back to PuLP.")
-
-        # --- PuLP fallback ----------------------------------------------
-        if model is None:
-            model = self._build_mps_with_pulp(parsed_mps)
+        model = self._build_mps_with_pulp(parsed_mps)
 
         # --- Build problem_data compatible with ResultInterpreter -------
         _obj_sense = parsed_mps.get('objective_sense', 'minimize')
@@ -1555,33 +1547,6 @@ class ModelGenerator:
         }
 
         return model, problem_data
-
-    @staticmethod
-    def _build_mps_with_cvxpy(mps_file_path: str):
-        """
-        Try to load an MPS file natively via CVXPY.
-
-        Returns ``(cvxpy_dict, solver_name)`` where *cvxpy_dict* has the
-        standard ``{'type': 'cvxpy', 'problem': ..., 'variables': ...}``
-        shape that ``SolverInterface`` understands.
-        """
-        import cvxpy as cp
-
-        available = cp.installed_solvers()
-        best_solver = None
-        for name in ('GUROBI', 'CPLEX', 'SCIP', 'GLPK_MI', 'CBC', 'OSQP'):
-            if name in available:
-                best_solver = name
-                break
-
-        problem = cp.Problem.from_file(mps_file_path)
-
-        return {
-            'type': 'cvxpy',
-            'problem': problem,
-            'variables': {},
-            'solver': best_solver,
-        }, best_solver
 
     @staticmethod
     def _build_mps_with_pulp(parsed_mps: Dict[str, Any]) -> pulp.LpProblem:

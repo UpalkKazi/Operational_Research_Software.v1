@@ -170,6 +170,14 @@ def test_parse_error_never_falls_through(page: Page):
 
 
 def test_natural_language_without_credentials(page: Page):
+    from dotenv import load_dotenv
+
+    from src.services.ai_service import provider_status
+
+    # The server under test loads .env; this process has to as well to agree with it.
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=True)
+    if provider_status()["configured"]:
+        pytest.skip("an AI provider is configured, so the server answers instead of refusing")
     text = "A bakery makes bread and cake. Bread earns 3 and cake earns 5. We have 40 hours of oven time."
     composer(page).fill(text)
     composer(page).press("Tab")

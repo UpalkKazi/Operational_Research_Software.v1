@@ -462,7 +462,9 @@ SCROLL_JS = """
     const el = doc.querySelector(".st-key-" + target);
     if (!el) { if (tries++ < 20) setTimeout(go, 100); return; }
     const narrow = (doc.defaultView || window).innerWidth < 900;
-    if (narrow || %s) el.scrollIntoView({behavior: "smooth", block: "start"});
+    // "auto" lands in one frame; a smooth animation can still be mid-flight
+    // when the next rerun repaints, leaving the preview off screen.
+    if (narrow || %s) el.scrollIntoView({behavior: "auto", block: "start"});
     const focusable = el.querySelector("button, [tabindex], input");
     if (focusable && narrow) focusable.focus({preventScroll: true});
   };

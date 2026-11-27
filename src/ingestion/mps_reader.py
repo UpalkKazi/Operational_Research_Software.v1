@@ -10,6 +10,7 @@ from __future__ import annotations
 import gzip
 import io
 import math
+import re
 import zlib
 from typing import Dict, List, Optional, Tuple
 
@@ -55,6 +56,8 @@ def read_mps_text(text: str, name_hint: str = "") -> ModelSpec:
     section = ""
     problem_name = ""
     sense = "minimize"
+    comment_sense: Optional[str] = None
+    explicit_sense = False
     objective_row: Optional[str] = None
     row_types: Dict[str, str] = {}
     row_order: List[str] = []
@@ -69,7 +72,16 @@ def read_mps_text(text: str, name_hint: str = "") -> ModelSpec:
     free_obj_rows: List[str] = []
 
     for lineno, raw in enumerate(text.splitlines(), 1):
-        if not raw.strip() or raw.startswith("*"):
+        if not raw.strip():
+            continue
+        if raw.startswith("*"):
+            # PuLP's writeMPS records a maximize objective only as "*SENSE:Maximize".
+            match = re.match(r"\*\s*SENSE\s*:\s*(\w+)", raw, re.IGNORECASE)
+            if match:
+                try:
+                    comment_sense = _sense(match.group(1), lineno)
+                except MPSError:
+                    comment_sense = None
             continue
         fields = raw.split()
         if not raw[0].isspace():
@@ -82,6 +94,7 @@ def read_mps_text(text: str, name_hint: str = "") -> ModelSpec:
                 section = "OBJSENSE"
                 if len(fields) > 1:
                     sense = _sense(fields[1], lineno)
+                    explicit_sense = True
                     section = ""
                 continue
             if head == "OBJSENSE" or head == "OBJSENCE":
@@ -98,6 +111,7 @@ def read_mps_text(text: str, name_hint: str = "") -> ModelSpec:
 
         if section == "OBJSENSE":
             sense = _sense(fields[0], lineno)
+            explicit_sense = True
         elif section == "OBJNAME":
             objective_row = fields[0]
         elif section == "ROWS":
@@ -191,6 +205,8 @@ def read_mps_text(text: str, name_hint: str = "") -> ModelSpec:
             else:
                 raise MPSError(f"Unknown bound type '{kind}'.", lineno)
 
+    if comment_sense and not explicit_sense:
+        sense = comment_sense
     if objective_row is None:
         raise MPSError("The file has no objective (N) row.")
     if not columns:

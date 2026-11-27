@@ -410,18 +410,26 @@ class SolverInterface:
                             name=v.name, nonneg=nonneg,
                         )
 
-                # objective
+                # objective — the constant term shifts the optimum, so keep it
                 obj_expr = sum(
                     float(model.objective.get(v, 0)) * cp_vars[v.name]
                     for v in model.variables()
-                )
+                ) + float(getattr(model.objective, 'constant', 0) or 0)
                 if model.sense == pulp.constants.LpMaximize:
                     cp_obj = cp.Maximize(obj_expr)
                 else:
                     cp_obj = cp.Minimize(obj_expr)
 
-                # constraints
+                # constraints — nonneg above only covers lowBound >= 0, so every
+                # explicit bound is carried over as its own constraint
                 cp_cons = []
+                for v in model.variables():
+                    if v.cat == 'Binary':
+                        continue
+                    if v.lowBound is not None and v.lowBound != 0:
+                        cp_cons.append(cp_vars[v.name] >= float(v.lowBound))
+                    if v.upBound is not None:
+                        cp_cons.append(cp_vars[v.name] <= float(v.upBound))
                 for cname, cobj in model.constraints.items():
                     lhs = sum(
                         float(cobj.get(v, 0)) * cp_vars[v.name]
